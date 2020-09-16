@@ -8,7 +8,8 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 face_haar_det = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 face_hog_det = dlib.get_frontal_face_detector()
 landmarks_det = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
-face_mtcnn_det = MTCNN(image_size=360, margin=40)
+face_mtcnn_det = MTCNN(image_size=160, margin=40)
+IncRes = InceptionResnetV1(pretrained='vggface2').eval()
 
 
 def haar_face_detector(img):
@@ -50,19 +51,41 @@ def mtcnn_face_detector(img):
     img_pil = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img_pil)
 
-    # MTCNN
+    # Detect faces
     bboxes, probs, landmarks_list = face_mtcnn_det.detect(img_pil, landmarks=True)
+
+    # # Get cropped face
+    # img_crop = face_mtcnn_det(img_pil)
+    # if img_crop is not None:
+    #     img_embedding = IncRes(img_crop.unsqueeze(0))
 
     # Loop through the faces
     if bboxes is not None:
-        for bbox, landmarks in zip(bboxes, landmarks_list):
+        for face_ind, (bbox, landmarks) in enumerate(zip(bboxes, landmarks_list)):
             # Draw bbox and landmarks
             cv2.rectangle(faces, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-            for x, y in landmarks:
+            for i, (x, y) in enumerate(landmarks):
                 if x < faces.shape[1] and y < faces.shape[0]:
                     cv2.circle(faces, (x, y), 2, (0, 255, 0), -1)
 
+            # Align face
+            aligned_face = align_face(img, bbox, landmarks)
+            cv2.imshow('Aligned Face ' + str(face_ind), aligned_face)
+
     return faces
+
+
+def align_face(img, bbox, landmarks, face_size=(160, 160), l_eye=(0.35, 0.35)):
+    dX, dY = (landmarks[1][0] - landmarks[0][0], landmarks[1][1] - landmarks[0][1])
+    eyeline_angle = np.degrees(np.arctan2(dY, dX))
+    cur_eyes_dist = np.sqrt(dX * dX + dY * dY)
+    new_eyes_dist = (1 - l_eye[0] * 2) * face_size[0]
+    scale = new_eyes_dist / cur_eyes_dist
+    eyes_center = ((landmarks[0][0] + landmarks[1][0]) / 2, (landmarks[0][1] + landmarks[1][1]) / 2)
+    Matrix = cv2.getRotationMatrix2D(eyes_center, eyeline_angle - 180, scale)
+    # Translation to move the eyes_center where it's supposed to be
+    Matrix[0, 2] = (face_size[0] / 2 - eyes_center[0])
+    Matrix[1, 2] = (face_size[1] * l_eye[1] - eyes_center[1])
 
 
 def shape_to_np(landmarks):
@@ -81,8 +104,8 @@ if __name__ == '__main__':
 
     while ret:
         # Detect faces and draw bboxes on the frame
-        # faces = mtcnn_face_detector(frm)
-        faces = dlib_face_detector(frm)
+        faces = mtcnn_face_detector(frm)
+        # faces = dlib_face_detector(frm)
         # faces = haar_face_detector(frm)
 
         # Flip and show the result
