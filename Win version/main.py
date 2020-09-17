@@ -82,17 +82,6 @@ def shape_to_np(landmarks):
 SavedFaces = {}
 
 
-def save_identity():
-    # New identity's name and embedding
-    face_name = input('Put the name of the identity: ')
-    new_vec = None
-    # Number of shots
-    shots_n = 5
-    # for i in range(shots_n):
-    #     if new_vec
-    # SavedFaces[None] = None
-
-
 def face_recognition(new_vec):
     min_dist, closest_id = None, None
     threshold = 1.242
@@ -111,7 +100,8 @@ def face_recognition(new_vec):
 
 
 def L2_sq(A, B):
-    return np.sum(np.power(np.subtract(A, B), 2))
+    np.asarray(A), np.asarray(B)
+    return np.sum(np.power(A - B, 2))
 
 
 def write_saved_faces(filename):
@@ -133,8 +123,13 @@ if __name__ == '__main__':
     # Read and flip the first frame
     ret, frm = vid.read()
     frm = np.flip(frm, 1)
-    # Pressed key
-    key = ord('1')
+    # Current mode
+    mode = ord('1')
+    # Number of shots for a new identity, current index of a shot, vector and name of a new identity
+    shots_n = 5
+    shot_ind = 0
+    new_vec = None
+    face_name = None
 
     while ret:
         # Get bboxes and embeddings of faces on the current frame
@@ -143,28 +138,57 @@ if __name__ == '__main__':
         img_show = np.copy(frm)
 
         # Check what key's pressed
-        _key = cv2.waitKey(1)
-        if _key != -1:
-            key = _key
+        key = cv2.waitKey(1)
+        if key == ord('1') or key == ord('2'):
+            mode = key
         # Quit
         if key == ord('q'):
             break
 
         if bboxes is not None:
             # Recognition mode
-            if key == ord('1'):
+            if mode == ord('1'):
                 for bbox, vec in zip(bboxes, embeddings):
+                    # Convert embedding from tensor to numpy
+                    vec = vec.detach().numpy()
                     # Recognize + set color
                     id = face_recognition(vec)
                     color = (0, 0, 255) if id is None else (0, 255, 0)
                     # Draw bbox and sign the face
                     cv2.rectangle(img_show, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
                     cv2.putText(img_show, '???' if id is None else id,
-                                (bbox[0], bbox[1]), cv2.QT_FONT_NORMAL, 0.5, color, 1)
+                                (bbox[0], bbox[1] - 5), cv2.QT_FONT_NORMAL, 0.5, color, 1)
 
             # Save face mode
-            if key == ord('2'):
-                pass
+            if mode == ord('2'):
+                if face_name is None:
+                    # New identity's name
+                    face_name = input('Put your name: ')
+
+                # Get bbox and embedding of the first face
+                bbox, vec = bboxes[0], embeddings[0]
+                # Draw bbox and sign the face
+                cv2.rectangle(img_show, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 2)
+                cv2.putText(img_show, face_name, (bbox[0], bbox[1] - 5), cv2.QT_FONT_NORMAL, 0.5, (255, 0, 0), 1)
+
+                # Make a shot
+                if key == ord(' '):
+                    # Whiten the frame
+                    img_show += 100
+                    if shot_ind == 0:
+                        new_vec = vec
+                    elif shot_ind < shots_n:
+                        new_vec.add_(vec)
+                    shot_ind += 1
+
+                    if shot_ind == shots_n:
+                        # Save embedding for the new identity as an average of vectors of made shots
+                        SavedFaces[face_name] = (new_vec / shots_n).tolist()
+                        print(face_name + ' identity\'s saved')
+                        # Set shot index back to 0, mode to recognition, face_name to None
+                        shot_ind = 0
+                        mode = ord('1')
+                        face_name = None
 
         cv2.imshow('Face Recognition', img_show)
 
