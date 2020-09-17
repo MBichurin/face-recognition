@@ -95,7 +95,7 @@ def face_recognition(new_vec):
     for saved_id in SavedFaces:
         saved_vec = SavedFaces[saved_id]
         loc_dist = L2_sq(new_vec, saved_vec)
-        if min_dist is None or min_dist < loc_dist:
+        if min_dist is None or min_dist > loc_dist:
             min_dist = loc_dist
             closest_id = saved_id
 
