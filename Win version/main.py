@@ -62,30 +62,45 @@ def mtcnn_face_detector(img):
     # Loop through the faces
     if bboxes is not None:
         for face_ind, (bbox, landmarks) in enumerate(zip(bboxes, landmarks_list)):
+            bbox = bbox.astype(int)
+            landmarks = landmarks.astype(int)
             # Draw bbox and landmarks
             cv2.rectangle(faces, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
             for i, (x, y) in enumerate(landmarks):
                 if x < faces.shape[1] and y < faces.shape[0]:
                     cv2.circle(faces, (x, y), 2, (0, 255, 0), -1)
 
-            # Align face
-            aligned_face = align_face(img, bbox, landmarks)
-            cv2.imshow('Aligned Face ' + str(face_ind), aligned_face)
+            # Transform coordinates into bbox-relative
+            landmarks = [((x - bbox[0]) * 160 // (bbox[2] - bbox[0]),
+                          (y - bbox[1]) * 160 // (bbox[3] - bbox[1])) for (x, y) in landmarks]
+            # Extract and align face
+            face = img[bbox[1]:bbox[3], bbox[0]:bbox[2], :]
+            if face.shape[0] != 0 and face.shape[1] != 0:
+                face = cv2.resize(face, (160, 160))
+                aligned_face = align_face(face, landmarks)
+                cv2.imshow('Aligned Face ' + str(face_ind), aligned_face)
 
     return faces
 
 
-def align_face(img, bbox, landmarks, face_size=(160, 160), l_eye=(0.35, 0.35)):
+def align_face(img, landmarks, face_size=(160, 160), l_eye=(0.25, 0.4)):
     dX, dY = (landmarks[1][0] - landmarks[0][0], landmarks[1][1] - landmarks[0][1])
+    # Rotation angle
     eyeline_angle = np.degrees(np.arctan2(dY, dX))
+    # Current and desired distance between eyes and scale
     cur_eyes_dist = np.sqrt(dX * dX + dY * dY)
     new_eyes_dist = (1 - l_eye[0] * 2) * face_size[0]
     scale = new_eyes_dist / cur_eyes_dist
-    eyes_center = ((landmarks[0][0] + landmarks[1][0]) / 2, (landmarks[0][1] + landmarks[1][1]) / 2)
-    Matrix = cv2.getRotationMatrix2D(eyes_center, eyeline_angle - 180, scale)
+    # Center of the eyeline
+    eyes_center = ((landmarks[0][0] + landmarks[1][0]) // 2, (landmarks[0][1] + landmarks[1][1]) // 2)
+    # Get the rotation matrix
+    Matrix = cv2.getRotationMatrix2D(eyes_center, eyeline_angle, scale)
     # Translation to move the eyes_center where it's supposed to be
-    Matrix[0, 2] = (face_size[0] / 2 - eyes_center[0])
-    Matrix[1, 2] = (face_size[1] * l_eye[1] - eyes_center[1])
+    Matrix[0, 2] += (face_size[0] / 2 - eyes_center[0])
+    Matrix[1, 2] += (face_size[1] * l_eye[1] - eyes_center[1])
+    # Affine transformation
+    img_aligned = cv2.warpAffine(img, Matrix, face_size, flags=cv2.INTER_CUBIC)
+    return img_aligned
 
 
 def shape_to_np(landmarks):
