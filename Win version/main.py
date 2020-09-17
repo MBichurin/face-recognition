@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image
-from facenet_pytorch import MTCNN, InceptionResnetV1
+from facenet_pytorch import MTCNN, InceptionResnetV1, fixed_image_standardization
 import json
 import torch
 
@@ -36,12 +36,18 @@ def find_and_describe_faces(img):
         # Extract and align face
         face = img[bbox[1]:bbox[3], bbox[0]:bbox[2], :]
         if face.shape[0] != 0 and face.shape[1] != 0:
+            # Resize and align
             face = cv2.resize(face, (160, 160))
-            aligned_face = align_face(face, landmarks)
+
             # Convert to tensor
-            face = cv2.cvtColor(aligned_face, cv2.COLOR_BGR2RGB)
+            face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+            face = torch.from_numpy(face).permute(2, 0, 1).float()
+
+            # Standardize
+            face = fixed_image_standardization(face)
+
             # Write to the faces array
-            faces[face_ind] = torch.from_numpy(face).permute(2, 0, 1).float()
+            faces[face_ind] = face
 
             # MTCNN PREWHITEN() MAY BE HELPFUL
 
