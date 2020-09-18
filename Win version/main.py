@@ -137,6 +137,10 @@ if __name__ == '__main__':
     new_vec = None
     face_name = None
 
+    # Writer
+    fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+    writer = cv2.VideoWriter('output_video.avi', fourcc, 5, (frm.shape[1], frm.shape[0]))
+
     while ret:
         # Get bboxes and embeddings of faces on the current frame
         bboxes, embeddings = find_and_describe_faces(frm)
@@ -198,12 +202,15 @@ if __name__ == '__main__':
 
         cv2.imshow('Face Recognition', img_show)
 
+        writer.write(img_show)
+
         # Read and flip the next frame
         ret, frm = vid.read()
         frm = np.flip(frm, 1)
 
     cv2.destroyAllWindows()
     vid.release()
+    writer.release()
 
     # Remember saved identities
     write_saved_faces('saved_faces')
