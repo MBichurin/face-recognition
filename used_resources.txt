@@ -29,4 +29,17 @@ Friday 18.09.20
 Monday 21.09.20
 	https://developer.android.com/training/basics/firstapp/starting-activity#kotlin
 	https://developer.android.com/training/constraint-layout
-	
+	https://developer.android.com/studio/debug/am-logcat#kotlin
+	https://developer.android.com/guide/topics/permissions/overview
+	http://developer.alexanderklimov.ru/android/views/imageview.php
+	https://developer.android.com/guide/topics/ui/declaring-layout
+	https://developer.android.com/training/camerax/architecture#kotlin
+
+
+Planned:
+	https://www.youtube.com/watch?v=kuv8uK-5CLY
+	https://www.youtube.com/watch?v=8ZD6_SDsKWI
+	https://developer.android.com/training/camerax/configuration
+	https://codelabs.developers.google.com/codelabs/camerax-getting-started/#0
+	https://developer.android.com/training/permissions/requesting
+	https://towardsdatascience.com/using-facenet-for-on-device-face-recognition-with-android-f84e36e19761
