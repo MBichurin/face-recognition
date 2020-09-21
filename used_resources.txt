@@ -1,0 +1,32 @@
+Tuesday 15.09.20
+	https://towardsdatascience.com/how-to-build-a-face-detection-and-recognition-system-f5c2cdfbeb8c
+	https://www.pyimagesearch.com/2018/02/26/face-detection-with-opencv-and-deep-learning/
+	https://developers.google.com/vision/face-detection-concepts
+	https://towardsdatascience.com/face-detection-in-2-minutes-using-opencv-python-90f89d7c0f81
+	http://www.willberger.org/cascade-haar-explained/
+	https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml
+	https://www.bogotobogo.com/python/OpenCV_Python/python_opencv3_Image_Object_Detection_Face_Detection_Haar_Cascade_Classifiers.php
+	https://medium.com/@manishjadav1302/hello-brother-i-followed-every-step-as-you-said-but-it-still-says-you-must-use-visual-studio-to-2a4800746e1d
+	https://www.pyimagesearch.com/2017/04/03/facial-landmarks-dlib-opencv-python/
+	https://www.pyimagesearch.com/2018/04/02/faster-facial-landmark-detector-with-dlib/
+	https://github.com/AKSHAYUBHAT/TensorFace/blob/master/openface/models/dlib/shape_predictor_68_face_landmarks.dat
+Wednesday 16.09.20
+	https://github.com/ipazc/mtcnn
+	https://github.com/timesler/facenet-pytorch
+	https://towardsdatascience.com/how-does-a-face-detection-program-work-using-neural-networks-17896df8e6ff
+	https://www.pyimagesearch.com/2017/05/22/face-alignment-with-opencv-and-python/
+Thursday 17.09.20
+	https://arxiv.org/pdf/1503.03832.pdf
+	https://www.youtube.com/watch?v=Wwua8ikpM1s
+Friday 18.09.20
+	https://engineering.eckovation.com/enable-developer-options-miui-8-miui-9/
+	https://www.youtube.com/watch?v=Ob4vSoWud9k
+	https://developer.android.com/training/basics/firstapp
+	https://developer.android.com/training/basics/firstapp/creating-project
+	https://developer.android.com/training/basics/firstapp/running-app
+	https://developer.android.com/training/basics/firstapp/building-ui
+
+Monday 21.09.20
+	https://developer.android.com/training/basics/firstapp/starting-activity#kotlin
+	https://developer.android.com/training/constraint-layout
+	
