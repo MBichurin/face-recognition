@@ -12,6 +12,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.impl.ImageOutputConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -28,6 +29,7 @@ class GreetingScreen: AppCompatActivity() {
         private const val REQUEST_CODE = 228
     }
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var myAnalyzer: MyAnalyzer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,14 +42,15 @@ class GreetingScreen: AppCompatActivity() {
             text = "Wassup " + name_of_user
         }
 
+        myAnalyzer = MyAnalyzer()
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
         if (hasNoPermissions()) {
             requestPermissions()
         }
         else {
             runCamera()
         }
-
-        cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
     private fun hasNoPermissions(): Boolean {
@@ -78,12 +81,11 @@ class GreetingScreen: AppCompatActivity() {
 
                 // Initialize, build an analyzer and set the viewFinder's surface on it
                 val imageAnalyser = ImageAnalysis.Builder()
+                    // To get current frame by skipping previous ones if needed
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                    .also {
-                        it.setAnalyzer(cameraExecutor, MyAnalyzer { value ->
-                            Log.d("CameraX", "Returned value = $value")
-                        })
-                    }
+
+                imageAnalyser.setAnalyzer(cameraExecutor, myAnalyzer)
 
                 // Initialize a CameraSelector and select the camera
                 val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
@@ -91,9 +93,9 @@ class GreetingScreen: AppCompatActivity() {
                 try {
                     // Unbind everything from cameraProvider
                     cameraProvider.unbindAll()
-                    // Bind camera selector and preview to cameraProvider
+                    // Bind camera selector and use-cases to cameraProvider
                     cameraProvider.bindToLifecycle(
-                        this, cameraSelector, preview)
+                        this, cameraSelector, preview, imageAnalyser)
                 }
                 catch(exc: Exception) {
                     Log.e("CameraX", "Use case binding failed", exc)
@@ -126,19 +128,10 @@ class GreetingScreen: AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
-    private class MyAnalyzer(private val listener: AnalyzeListener): ImageAnalysis.Analyzer {
-        private fun ByteBuffer.toByteArray(): ByteArray {
-            // Rewind the buffer to 0
-            rewind()
-            val data = ByteArray(remaining())
-            // Copy the buffer into a byte array
-            get(data)
-            // Return the byte array
-            return data
-        }
-
+    private class MyAnalyzer: ImageAnalysis.Analyzer {
         override fun analyze(image: ImageProxy) {
-            listener(322)
+
+            // Image must be closed, use a copy of it for analysis
             image.close()
         }
     }
