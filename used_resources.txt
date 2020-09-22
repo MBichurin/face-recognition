@@ -34,12 +34,19 @@ Monday 21.09.20
 	http://developer.alexanderklimov.ru/android/views/imageview.php
 	https://developer.android.com/guide/topics/ui/declaring-layout
 	https://developer.android.com/training/camerax/architecture#kotlin
-
+Tuesday 22.09.20
+	https://www.youtube.com/watch?v=kuv8uK-5CLY
+	https://kotlinlang.org/docs/reference/null-safety.html
+	https://kotlinlang.org/docs/reference/keyword-reference.html
+	https://developer.android.com/jetpack/androidx/releases/camera
+	https://gabrieltanner.org/blog/android-camerax
+	https://developer.android.com/training/permissions/requesting
+	https://codelabs.developers.google.com/codelabs/camerax-getting-started/#0
+	https://developer.android.com/training/camerax/configuration
+	https://developer.android.com/training/camerax/analyze
+	https://towardsdatascience.com/using-facenet-for-on-device-face-recognition-with-android-f84e36e19761
+	
 
 Planned:
-	https://www.youtube.com/watch?v=kuv8uK-5CLY
 	https://www.youtube.com/watch?v=8ZD6_SDsKWI
-	https://developer.android.com/training/camerax/configuration
-	https://codelabs.developers.google.com/codelabs/camerax-getting-started/#0
-	https://developer.android.com/training/permissions/requesting
 	https://towardsdatascience.com/using-facenet-for-on-device-face-recognition-with-android-f84e36e19761
