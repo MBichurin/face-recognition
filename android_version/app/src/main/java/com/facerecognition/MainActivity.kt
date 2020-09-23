@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -32,12 +33,30 @@ class MainActivity : AppCompatActivity() {
         myAnalyzer = MyAnalyzer()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        if (hasNoPermissions()) {
+        if (hasNoPermissions())
             requestPermissions()
-        }
-        else {
+        else
             runCamera()
+    }
+
+    override fun onRequestPermissionsResult
+                (requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CODE) {
+            if (hasNoPermissions()) {
+                Toast.makeText(this,
+                    "The app needs access to the camera to work properly :(",
+                    Toast.LENGTH_SHORT).show()
+                finish()
+            }
+            else
+                runCamera()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
     }
 
     private fun hasNoPermissions(): Boolean {
@@ -48,6 +67,9 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE)
     }
+
+    // Initialize a CameraSelector and select the camera
+    var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
     private fun runCamera() {
         // Used to bind the camera lifecycle to the lifecycle owner
@@ -74,9 +96,6 @@ class MainActivity : AppCompatActivity() {
 
                     imageAnalyser.setAnalyzer(cameraExecutor, myAnalyzer)
 
-                    // Initialize a CameraSelector and select the camera
-                    val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-
                     try {
                         // Unbind everything from cameraProvider
                         cameraProvider.unbindAll()
@@ -92,24 +111,19 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    override fun onRequestPermissionsResult(
-            requestCode: Int,
-            permissions: Array<String>,
-            grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE) {
-            if (hasNoPermissions()) {
-                Toast.makeText(this,
-                        "The app needs access to the camera to work properly :(",
-                        Toast.LENGTH_SHORT).show()
-                finish()
-            }
-            else runCamera()
+    fun switchCam(view: View) {
+        if (camSwitcher.text == getString(R.string.cam_switcher_text1)) {
+            camSwitcher.text = getString(R.string.cam_switcher_text2)
+            cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
         }
-    }
+        else {
+            camSwitcher.text = getString(R.string.cam_switcher_text1)
+            cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+        }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
+        if (hasNoPermissions())
+            requestPermissions()
+        else
+            runCamera()
     }
 }
