@@ -45,7 +45,11 @@ Tuesday 22.09.20
 	https://developer.android.com/training/camerax/configuration
 	https://developer.android.com/training/camerax/analyze
 	https://towardsdatascience.com/using-facenet-for-on-device-face-recognition-with-android-f84e36e19761
-	
+Wednesday 23.09.20
+	https://www.baeldung.com/kotlin-const-var-and-val-keywords
+	https://www.tensorflow.org/lite/guide/get_started#1_choose_a_model
+	https://www.tensorflow.org/lite/guide/ops_compatibility
+
 
 Planned:
 	https://www.youtube.com/watch?v=8ZD6_SDsKWI
