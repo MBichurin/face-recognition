@@ -1,4 +1,9 @@
 .idea/
+androidTest/
+test/
 *.xml
 *.dat
 *.avi
+*.png
+*.apk
+*.pro
