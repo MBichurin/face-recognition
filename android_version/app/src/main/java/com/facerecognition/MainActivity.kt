@@ -14,6 +14,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -93,8 +94,9 @@ class MainActivity : AppCompatActivity() {
                             // To get current frame by skipping previous ones if needed
                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                             .build()
-
-                    imageAnalyser.setAnalyzer(cameraExecutor, myAnalyzer)
+                            .also {
+                                it.setAnalyzer(cameraExecutor, myAnalyzer)
+                            }
 
                     try {
                         // Unbind everything from cameraProvider
