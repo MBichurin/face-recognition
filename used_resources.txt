@@ -49,6 +49,13 @@ Wednesday 23.09.20
 	https://www.baeldung.com/kotlin-const-var-and-val-keywords
 	https://www.tensorflow.org/lite/guide/get_started#1_choose_a_model
 	https://www.tensorflow.org/lite/guide/ops_compatibility
+Thursday 24.09.20
+	https://firebase.google.com/docs/android/setup
+	https://firebase.google.com/docs/ml-kit/android/detect-faces#kotlin+ktx
+Friday 25.09.20
+	https://stackoverflow.com/questions/25976141/android-studio-debugger-view-bitmap/31291397#:~:text=First%20run%20your%20program%20in,you%20need%20to%20view%20it.
+	https://magdamiu.com/2020/09/16/smile-its-camerax-analysis-and-extensions/#:~:text=CameraX%20produces%20images%20in%20YUV_420_888,pixel%20%3D%20Y%20(grayscale%20image)
+
 
 
 Planned:
