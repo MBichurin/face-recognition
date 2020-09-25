@@ -2,21 +2,24 @@ package com.facerecognition
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.media.Image
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -50,10 +53,13 @@ class MainActivity : AppCompatActivity() {
         myAnalyzer = MyAnalyzer()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        if (permissionsDenied())
+        if (permissionsDenied()) {
             requestPermissions()
-        else
+        }
+        else {
+            saveImage()
             runCamera()
+        }
     }
 
     override fun onRequestPermissionsResult
@@ -148,7 +154,26 @@ class MainActivity : AppCompatActivity() {
             runCamera()
     }
 
-//    private fun saveImage() {
-//        Environment.DIRECTORY_PICTURES
-//    }
+    private fun saveImage() {
+        val bitmap_drawable = imageView.drawable as BitmapDrawable
+        val bitmap =  bitmap_drawable.bitmap
+//        var filepath = Environment.DIRECTORY_PICTURES
+
+        val outputDirectory = getOutputDirectory()
+
+        val photoFile = File(outputDirectory, "willsmith.jpg")
+        val outstream = FileOutputStream(photoFile)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outstream)
+        outstream.flush()
+        outstream.close()
+
+        Log.d("JOPA", "Image's Saved $photoFile")
+//        val savedUri = Uri.fromFile(photoFile)
+
+    }
+
+    private fun getOutputDirectory(): File {
+        val mediaDir = externalMediaDirs.firstOrNull()
+        return mediaDir!!
+    }
 }
