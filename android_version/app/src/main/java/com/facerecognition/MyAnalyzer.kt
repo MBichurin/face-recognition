@@ -3,6 +3,7 @@ package com.facerecognition
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.BitmapDrawable
 import android.media.Image
 import android.os.Environment
 import android.util.Log
@@ -14,6 +15,7 @@ import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
+import kotlinx.android.synthetic.main.activity_main.*
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -22,11 +24,15 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
+        val bitmap = BitmapFactory.decodeFile("/storage/emulated/0/Android/media/com.facerecognition/willsmith.jpg")
+        val image = FirebaseVisionImage.fromBitmap(bitmap)
+
 //        // Convert YUV_420_888 to Bitmap
 //        val bitmap = toBitmap(imageProxy.image!!)
 //        // Convert the image to FirebaseVisionImage
 //        val image = FirebaseVisionImage.fromBitmap(bitmap)
-        val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, ROTATION_0)
+
+//        val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, ROTATION_0)
 
         // Configure and build a detector
         val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder().build()

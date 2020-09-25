@@ -157,7 +157,6 @@ class MainActivity : AppCompatActivity() {
     private fun saveImage() {
         val bitmap_drawable = imageView.drawable as BitmapDrawable
         val bitmap =  bitmap_drawable.bitmap
-//        var filepath = Environment.DIRECTORY_PICTURES
 
         val outputDirectory = getOutputDirectory()
 
