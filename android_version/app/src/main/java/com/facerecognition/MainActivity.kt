@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -19,6 +20,10 @@ import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+// Initialize a CameraSelector and select the camera
+var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+var frontCam = true
+
 class MainActivity : AppCompatActivity() {
     private val permissions = arrayOf(android.Manifest.permission.CAMERA,
         android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -31,6 +36,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Update camera switcher
+        if (frontCam) {
+            camSwitcher.text = getString(R.string.cam_switcher_text1)
+            cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+        }
+        else {
+            camSwitcher.text = getString(R.string.cam_switcher_text2)
+            cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+        }
 
         myAnalyzer = MyAnalyzer()
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -72,8 +87,7 @@ class MainActivity : AppCompatActivity() {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE)
     }
 
-    // Initialize a CameraSelector and select the camera
-    var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+
 
     private fun runCamera() {
         // Used to bind the camera lifecycle to the lifecycle owner
@@ -116,12 +130,14 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun switchCam(view: View) {
-        if (camSwitcher.text == getString(R.string.cam_switcher_text1)) {
+    fun switchCam(view: View) {
+        if (frontCam) {
+            frontCam = false
             camSwitcher.text = getString(R.string.cam_switcher_text2)
             cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
         }
         else {
+            frontCam = true
             camSwitcher.text = getString(R.string.cam_switcher_text1)
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
@@ -131,4 +147,8 @@ class MainActivity : AppCompatActivity() {
         else
             runCamera()
     }
+
+//    private fun saveImage() {
+//        Environment.DIRECTORY_PICTURES
+//    }
 }
