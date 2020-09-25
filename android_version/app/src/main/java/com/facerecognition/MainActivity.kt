@@ -20,7 +20,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
-    private val permissions = arrayOf(android.Manifest.permission.CAMERA)
+    private val permissions = arrayOf(android.Manifest.permission.CAMERA,
+        android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
     companion object {
         private const val REQUEST_CODE = 228
     }
@@ -34,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         myAnalyzer = MyAnalyzer()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        if (hasNoPermissions())
+        if (permissionsDenied())
             requestPermissions()
         else
             runCamera()
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
                 (requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE) {
-            if (hasNoPermissions()) {
+            if (permissionsDenied()) {
                 Toast.makeText(this,
                     "The app needs access to the camera to work properly :(",
                     Toast.LENGTH_SHORT).show()
@@ -60,8 +61,10 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
-    private fun hasNoPermissions(): Boolean {
+    private fun permissionsDenied(): Boolean {
         return (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_DENIED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 == PackageManager.PERMISSION_DENIED)
     }
 
@@ -113,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    fun switchCam(view: View) {
+    private fun switchCam(view: View) {
         if (camSwitcher.text == getString(R.string.cam_switcher_text1)) {
             camSwitcher.text = getString(R.string.cam_switcher_text2)
             cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -123,7 +126,7 @@ class MainActivity : AppCompatActivity() {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
 
-        if (hasNoPermissions())
+        if (permissionsDenied())
             requestPermissions()
         else
             runCamera()

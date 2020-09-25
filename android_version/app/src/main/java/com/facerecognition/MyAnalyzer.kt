@@ -1,9 +1,13 @@
 package com.facerecognition
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.*
 import android.media.Image
+import android.os.Environment
 import android.util.Log
+import android.view.Surface.ROTATION_0
+import android.view.Surface.ROTATION_90
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.firebase.ml.vision.FirebaseVision
@@ -11,18 +15,22 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val bitmap = toBitmap(imageProxy.image!!)
+//        // Convert YUV_420_888 to Bitmap
+//        val bitmap = toBitmap(imageProxy.image!!)
+//        // Convert the image to FirebaseVisionImage
+//        val image = FirebaseVisionImage.fromBitmap(bitmap)
+        val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, ROTATION_0)
+
         // Configure and build a detector
         val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder().build()
         val detector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions)
-
-        // Convert the image to FirebaseVisionImage
-        val image = FirebaseVisionImage.fromBitmap(bitmap)
 
         // Pass the image to the detector
         detector.detectInImage(image)
@@ -30,7 +38,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 successfulDetection(faces.result)
             }
             .addOnFailureListener {e ->
-                Log.e("Error", e.message!!)
+                Log.e("FaceDetector", e.message!!)
             }
 
         // Image must be closed, use a copy of it for analysis
@@ -38,10 +46,14 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
     }
 
     private fun successfulDetection(faces: List<FirebaseVisionFace>?) {
+        Log.d("JOPA", "successfulDetection()")
         if (faces?.isNotEmpty()!!) {
             for (face in faces) {
-
+                Log.d("JOPA", face.boundingBox.toString())
             }
+        }
+        else {
+            Log.d("JOPA", "no faces found(")
         }
     }
 
