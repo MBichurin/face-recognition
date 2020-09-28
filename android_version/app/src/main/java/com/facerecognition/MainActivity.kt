@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.view.Surface.ROTATION_0
 import android.view.View
 import android.widget.Toast
 import androidx.camera.core.*
@@ -107,19 +108,19 @@ class MainActivity : AppCompatActivity() {
 
                     // Initialize, build a preview and set the viewFinder's surface on it
                     val preview = Preview.Builder()
-                            .build()
-                            .also {
-                                it.setSurfaceProvider(viewFinder.surfaceProvider)
-                            }
+                        .build()
+                        .also {
+                            it.setSurfaceProvider(viewFinder.surfaceProvider)
+                        }
 
                     // Initialize, build an analyzer and set the viewFinder's surface on it
                     val imageAnalyser = ImageAnalysis.Builder()
-                            // To get current frame by skipping previous ones if needed
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                            .also {
-                                it.setAnalyzer(cameraExecutor, myAnalyzer)
-                            }
+                        // To get current frame by skipping previous ones if needed
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also {
+                            it.setAnalyzer(cameraExecutor, myAnalyzer)
+                        }
 
                     try {
                         // Unbind everything from cameraProvider
@@ -155,24 +156,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveImage() {
+        // Get bitmap from imageView
         val bitmap_drawable = imageView.drawable as BitmapDrawable
         val bitmap =  bitmap_drawable.bitmap
 
+        // Write the image to the external storage
         val outputDirectory = getOutputDirectory()
-
         val photoFile = File(outputDirectory, "willsmith.jpg")
         val outstream = FileOutputStream(photoFile)
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outstream)
         outstream.flush()
         outstream.close()
-
         Log.d("JOPA", "Image's Saved $photoFile")
-//        val savedUri = Uri.fromFile(photoFile)
 
+        // Get pixel of the bitmap
+        val width = bitmap.width
+        val height = bitmap.height
+        var pixels = IntArray(width * height)
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        // Change pixels and use them in a mutable copy of the bitmap
+        for (i in pixels.indices)
+            // [int]pixel = (Alpha   |     Red      |    Green  |  Blue)
+            pixels[i] = (255 shl 24) + (255 shl 16) + (255 shl 8) + 255
+        val changed_bm = bitmap.copy(bitmap.config, true)
+        changed_bm.setPixels(pixels, 0, width, 0, 0, width, height)
+
+        // Display changed bitmap
+        imageView.setImageBitmap(changed_bm)
     }
 
     private fun getOutputDirectory(): File {
-        val mediaDir = externalMediaDirs.firstOrNull()
-        return mediaDir!!
+        return externalMediaDirs.firstOrNull()!!
     }
 }

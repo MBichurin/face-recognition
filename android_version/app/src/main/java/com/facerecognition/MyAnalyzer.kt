@@ -24,14 +24,17 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val bitmap = BitmapFactory.decodeFile("/storage/emulated/0/Android/media/com.facerecognition/willsmith.jpg")
+        //!!! Converter seems to work wrong, gotta write my own
+        // Convert YUV_420_888 to Bitmap
+        val bitmap = toBitmap(imageProxy.image!!)
+        // Convert the image to FirebaseVisionImage
         val image = FirebaseVisionImage.fromBitmap(bitmap)
 
-//        // Convert YUV_420_888 to Bitmap
-//        val bitmap = toBitmap(imageProxy.image!!)
-//        // Convert the image to FirebaseVisionImage
-//        val image = FirebaseVisionImage.fromBitmap(bitmap)
 
+        //!!! Gotta use this one:
+//        imageProxy.imageInfo.rotationDegrees
+
+        //!!! This line makes a file from imageProxy.image directly but now it crashes the program
 //        val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, ROTATION_0)
 
         // Configure and build a detector
