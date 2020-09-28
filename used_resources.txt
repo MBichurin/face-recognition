@@ -56,6 +56,18 @@ Friday 25.09.20
 	https://stackoverflow.com/questions/25976141/android-studio-debugger-view-bitmap/31291397#:~:text=First%20run%20your%20program%20in,you%20need%20to%20view%20it.
 	https://magdamiu.com/2020/09/16/smile-its-camerax-analysis-and-extensions/#:~:text=CameraX%20produces%20images%20in%20YUV_420_888,pixel%20%3D%20Y%20(grayscale%20image)
 
+Monday 28.09.20
+	https://stackoverflow.com/questions/5699810/how-to-change-bitmap-image-color-in-android
+	https://www.programiz.com/kotlin-programming/bitwise
+	https://kotlinlang.org/docs/tutorials/kotlin-for-py/loops.html
+	https://kotlinlang.org/docs/reference/control-flow.html
+	https://stackoverflow.com/questions/17315842/how-to-call-a-method-in-mainactivity-from-another-class/25260829
+	https://stackoverflow.com/questions/62541934/how-to-set-a-box-on-camerax-preview-so-as-to-processes-it-using-imageanalysis-in
+	https://stackoverflow.com/questions/14388498/how-do-i-manipulate-a-view-from-another-class-in-android
+	https://stackoverflow.com/questions/10996479/how-to-update-a-textview-of-an-activity-from-another-class
+
+
+
 
 
 Planned:
