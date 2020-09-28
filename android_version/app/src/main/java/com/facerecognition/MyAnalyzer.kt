@@ -15,12 +15,13 @@ import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
-import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.activity_main.bboxesView
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
+    private lateinit var listener: BBoxUpdater
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
@@ -45,10 +46,10 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
         // Pass the image to the detector
         detector.detectInImage(image)
-            .addOnCompleteListener {faces ->
+            .addOnCompleteListener { faces ->
                 successfulDetection(faces.result)
             }
-            .addOnFailureListener {e ->
+            .addOnFailureListener { e ->
                 Log.e("FaceDetector", e.message!!)
             }
 
@@ -56,15 +57,11 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         imageProxy.close()
     }
 
+    fun setBBoxUpdaterListener(_listener: BBoxUpdater) {
+        listener = _listener
+    }
+
     private fun successfulDetection(faces: List<FirebaseVisionFace>?) {
-        Log.d("JOPA", "successfulDetection()")
-        if (faces?.isNotEmpty()!!) {
-            for (face in faces) {
-                Log.d("JOPA", face.boundingBox.toString())
-            }
-        }
-        else {
-            Log.d("JOPA", "no faces found(")
-        }
+        listener.updateBBoxes(faces)
     }
 }

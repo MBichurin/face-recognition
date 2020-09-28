@@ -15,9 +15,11 @@ import android.view.View
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.FileOutputStream
@@ -28,7 +30,7 @@ import java.util.concurrent.Executors
 var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 var frontCam = true
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), BBoxUpdater {
     private val permissions = arrayOf(android.Manifest.permission.CAMERA,
         android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
     companion object {
@@ -52,13 +54,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         myAnalyzer = MyAnalyzer()
+        // Set the main activity as a listener for our analyzer
+        myAnalyzer.setBBoxUpdaterListener(this)
+
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         if (permissionsDenied()) {
             requestPermissions()
         }
         else {
-            saveImage()
             runCamera()
         }
     }
@@ -153,39 +157,38 @@ class MainActivity : AppCompatActivity() {
             runCamera()
     }
 
-    private fun saveImage() {
-        // Get bitmap from imageView
-        val bitmap_drawable = imageView.drawable as BitmapDrawable
-        val bitmap =  bitmap_drawable.bitmap
+    override fun updateBBoxes(faces: List<FirebaseVisionFace>?) {
+        // Get pixels of the bitmap
+        val width = this.window.decorView.width
+        val height = this.window.decorView.height
 
-        // Write the image to the external storage
-        val outputDirectory = getOutputDirectory()
-        val photoFile = File(outputDirectory, "willsmith.jpg")
-        val outstream = FileOutputStream(photoFile)
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outstream)
-        outstream.flush()
-        outstream.close()
-        Log.d("JOPA", "Image's Saved $photoFile")
+        // Make a mutable copy of the bitmap
+        val new_bm = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
 
-        // Get pixel of the bitmap
-        val width = bitmap.width
-        val height = bitmap.height
-        var pixels = IntArray(width * height)
-        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+        // If there are faces, iterate through them and draw bboxes
+        if (faces?.isNotEmpty()!!) {
+            for (face in faces) {
+                // Draw a bbox around the face
+                val left = face.boundingBox.left
+                val right = face.boundingBox.right
+                val bottom = face.boundingBox.bottom
+                val top = face.boundingBox.top
+                for (x in left..right) {
+                    new_bm.setPixel(x, top, (255 shl 24 + 255 shl 8))
+                    new_bm.setPixel(x, bottom, (255 shl 24 + 255 shl 8))
+                }
+                for (y in top..bottom) {
+                    new_bm.setPixel(left, y, (255 shl 24 + 255 shl 8))
+                    new_bm.setPixel(right, y, (255 shl 24 + 255 shl 8))
+                }
+            }
+        }
 
-        // Change pixels and use them in a mutable copy of the bitmap
-        for (i in 0 until width * height)
-            // [int]pixel = (Alpha   |     Red      |    Green  |  Blue)
-//            pixels[i] = (255 shl 24) + (255 shl 16) + (255 shl 8) + 255
-            pixels[i] = pixels[i] and (255 shl 24).inv()
-        val changed_bm = bitmap.copy(bitmap.config, true)
-        changed_bm.setPixels(pixels, 0, width, 0, 0, width, height)
-
-        // Display changed bitmap
-        imageView.setImageBitmap(changed_bm)
+        // Display bounding boxes
+        bboxesView.setImageBitmap(new_bm)
     }
+}
 
-    private fun getOutputDirectory(): File {
-        return externalMediaDirs.firstOrNull()!!
-    }
+interface BBoxUpdater {
+    fun updateBBoxes(faces: List<FirebaseVisionFace>?)
 }
