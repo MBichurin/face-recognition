@@ -7,8 +7,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.media.Image
 import android.os.Environment
 import android.util.Log
-import android.view.Surface.ROTATION_0
-import android.view.Surface.ROTATION_90
+import android.view.Surface
+import android.view.Surface.*
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.firebase.ml.vision.FirebaseVision
@@ -25,17 +25,29 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
         //!!! Converter seems to work wrong, gotta write my own
-        // Convert YUV_420_888 to Bitmap
-        val bitmap = toBitmap(imageProxy.image!!)
-        // Convert the image to FirebaseVisionImage
-        val image = FirebaseVisionImage.fromBitmap(bitmap)
+//        // Convert YUV_420_888 to Bitmap
+//        val bitmap = toBitmap(imageProxy.image!!)
+//        // Convert the image to FirebaseVisionImage
+//        val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 
-        //!!! Gotta use this one:
-//        imageProxy.imageInfo.rotationDegrees
+        // Get rotation of the frame
+        val rotation = when (imageProxy.imageInfo.rotationDegrees) {
+            // Upside down
+            in 45..134 -> ROTATION_90
+            // Clockwise phone rotation
+            in 135..224 -> ROTATION_180
+            // Vertical view
+            in 225..314 -> ROTATION_270
+            // Anticlockwise phone rotation
+            else -> ROTATION_0
+        }
+        Log.d("JOPA", rotation.toString())
 
         //!!! This line makes a file from imageProxy.image directly but now it crashes the program
-//        val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, ROTATION_0)
+        val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, rotation)
+
+        val image_bm = image.bitmap
 
         // Configure and build a detector
         val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder().build()

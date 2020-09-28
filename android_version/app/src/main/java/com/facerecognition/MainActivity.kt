@@ -94,8 +94,6 @@ class MainActivity : AppCompatActivity() {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE)
     }
 
-
-
     private fun runCamera() {
         // Used to bind the camera lifecycle to the lifecycle owner
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
