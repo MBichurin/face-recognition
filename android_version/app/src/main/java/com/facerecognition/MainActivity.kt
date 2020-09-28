@@ -3,6 +3,7 @@ package com.facerecognition
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
 import android.media.Image
 import android.net.Uri
@@ -159,27 +160,38 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?) {
         // Get pixels of the bitmap
-        val width = this.window.decorView.width
-        val height = this.window.decorView.height
+
+        //! Gotta make it non-constant
+        val width = 480
+        val height = 640
 
         // Make a mutable copy of the bitmap
-        val new_bm = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        var new_bm = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
 
         // If there are faces, iterate through them and draw bboxes
         if (faces?.isNotEmpty()!!) {
             for (face in faces) {
                 // Draw a bbox around the face
-                val left = face.boundingBox.left
-                val right = face.boundingBox.right
+                val right = width - face.boundingBox.left
+                val left = width - face.boundingBox.right
                 val bottom = face.boundingBox.bottom
                 val top = face.boundingBox.top
+
+                for (x in 0 until width)
+                    for (y in 0 until height)
+                        new_bm.setPixel(x, y, 0.inv())
+
+                val bboxColor = (255 shl 24 + 255 shl 8)
+
                 for (x in left..right) {
-                    new_bm.setPixel(x, top, (255 shl 24 + 255 shl 8))
-                    new_bm.setPixel(x, bottom, (255 shl 24 + 255 shl 8))
+                    if (x !in 0 until width) continue
+                    if (top in 0 until height) new_bm.setPixel(x, top, bboxColor)
+                    if (bottom in 0 until height) new_bm.setPixel(x, bottom, bboxColor)
                 }
                 for (y in top..bottom) {
-                    new_bm.setPixel(left, y, (255 shl 24 + 255 shl 8))
-                    new_bm.setPixel(right, y, (255 shl 24 + 255 shl 8))
+                    if (y !in 0 until height) continue
+                    if (left in 0 until width) new_bm.setPixel(left, y, bboxColor)
+                    if (right in 0 until width) new_bm.setPixel(right, y, bboxColor)
                 }
             }
         }

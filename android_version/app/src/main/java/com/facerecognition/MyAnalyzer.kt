@@ -40,6 +40,8 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         // Convert to FirebaseVisionImage + rotate
         val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, rotation)
 
+        val bm_to_analyze = image.bitmap
+
         // Configure and build a detector
         val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder().build()
         val detector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions)
