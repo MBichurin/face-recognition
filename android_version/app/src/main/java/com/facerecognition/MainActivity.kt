@@ -176,9 +176,10 @@ class MainActivity : AppCompatActivity() {
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
         // Change pixels and use them in a mutable copy of the bitmap
-        for (i in pixels.indices)
+        for (i in 0 until width * height)
             // [int]pixel = (Alpha   |     Red      |    Green  |  Blue)
-            pixels[i] = (255 shl 24) + (255 shl 16) + (255 shl 8) + 255
+//            pixels[i] = (255 shl 24) + (255 shl 16) + (255 shl 8) + 255
+            pixels[i] = pixels[i] and (255 shl 24).inv()
         val changed_bm = bitmap.copy(bitmap.config, true)
         changed_bm.setPixels(pixels, 0, width, 0, 0, width, height)
 
