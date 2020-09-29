@@ -171,34 +171,34 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         // Bounding boxes color
         val bboxColor = (255 shl 24) or (255 shl 8)
 
-        // Make it completely white
-        for (x in 0 until width)
-            for (y in 0 until height)
-                new_bm.setPixel(x, y, bboxColor)
+//        // Make it completely white
+//        for (x in 0 until width)
+//            for (y in 0 until height)
+//                new_bm.setPixel(x, y, 0.inv())
 
-//        // If there are faces, iterate through them and draw bboxes
-//        if (faces?.isNotEmpty()!!) {
-//            for (face in faces) {
-//                // Draw a bbox around the face
-//                var left = if (frontCam) width - face.boundingBox.right
-//                            else face.boundingBox.left
-//                val right = if (frontCam) width - face.boundingBox.left
-//                            else face.boundingBox.right
-//                val bottom = face.boundingBox.bottom
-//                val top = face.boundingBox.top
-//
-//                for (x in left..right) {
-//                    if (x !in 0 until width) continue
-//                    if (top in 0 until height) new_bm.setPixel(x, top, bboxColor)
-//                    if (bottom in 0 until height) new_bm.setPixel(x, bottom, bboxColor)
-//                }
-//                for (y in top..bottom) {
-//                    if (y !in 0 until height) continue
-//                    if (left in 0 until width) new_bm.setPixel(left, y, bboxColor)
-//                    if (right in 0 until width) new_bm.setPixel(right, y, bboxColor)
-//                }
-//            }
-//        }
+        // If there are faces, iterate through them and draw bboxes
+        if (faces?.isNotEmpty()!!) {
+            for (face in faces) {
+                // Draw a bbox around the face
+                var left = if (frontCam) width - face.boundingBox.right
+                            else face.boundingBox.left
+                val right = if (frontCam) width - face.boundingBox.left
+                            else face.boundingBox.right
+                val bottom = face.boundingBox.bottom
+                val top = face.boundingBox.top
+
+                for (x in left..right) {
+                    if (x !in 0 until width) continue
+                    if (top in 0 until height) new_bm.setPixel(x, top, bboxColor)
+                    if (bottom in 0 until height) new_bm.setPixel(x, bottom, bboxColor)
+                }
+                for (y in top..bottom) {
+                    if (y !in 0 until height) continue
+                    if (left in 0 until width) new_bm.setPixel(left, y, bboxColor)
+                    if (right in 0 until width) new_bm.setPixel(right, y, bboxColor)
+                }
+            }
+        }
 
         // Display bounding boxes
         bboxesView.setImageBitmap(new_bm)
