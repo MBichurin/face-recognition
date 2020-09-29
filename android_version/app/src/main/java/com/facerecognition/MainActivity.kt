@@ -166,8 +166,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         val matrix = Matrix().apply { postScale(if (frontCam) -1f else 1f, 1f, width * 0.5f, height * 0.5f) }
         val new_bm = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, true)
 
-        Log.d("JOPA", bm.config.toString() + " " + Bitmap.Config.ARGB_8888)
-
         // Bounding boxes color
         val bboxColor = (255 shl 24) or (255 shl 8)
 

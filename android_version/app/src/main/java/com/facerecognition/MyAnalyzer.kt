@@ -19,14 +19,22 @@ import kotlinx.android.synthetic.main.activity_main.bboxesView
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater
 
+    // Configure and build a detector
+    private val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder()
+        .setPerformanceMode(FirebaseVisionFaceDetectorOptions.FAST)
+        .build()
+    private val detector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions)
+
+    // To not detect faces on every frame, just one at once
+    private var detectorIsBusy = AtomicBoolean(false)
+
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val t_start = System.currentTimeMillis()
-
         // Get rotation of the frame
         val rotation = when (imageProxy.imageInfo.rotationDegrees) {
             // Upside down
@@ -45,23 +53,29 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         // Image must be closed, use a copy of it for analysis
         imageProxy.close()
 
-        // Configure and build a detector
-        val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder()
-            .setPerformanceMode(FirebaseVisionFaceDetectorOptions.FAST)
-            .build()
-        val detector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions)
+
+        if (detectorIsBusy.get())
+            return
+
+        // Detector is busy now
+        detectorIsBusy.set(true)
+
+        val t_start = System.currentTimeMillis()
 
         // Pass the image to the detector
         detector.detectInImage(image)
             .addOnCompleteListener { faces ->
+                val t_finish = System.currentTimeMillis()
+                Log.d("JOPA", (t_finish - t_start).toString())
+
+                // Detector is free now
+                detectorIsBusy.set(false)
+                // Pass data to the listener
                 successfulDetection(image.bitmap, faces.result)
             }
             .addOnFailureListener { e ->
                 Log.e("FaceDetector", e.message!!)
             }
-
-        val t_finish = System.currentTimeMillis()
-        Log.d("JOPA", (t_finish - t_start).toString())
     }
 
     fun setBBoxUpdaterListener(_listener: BBoxUpdater) {
