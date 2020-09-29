@@ -2,17 +2,22 @@ package com.facerecognition
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
 import android.media.Image
+import android.media.VolumeShaper
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.util.Size
 import android.view.Surface.ROTATION_0
 import android.view.View
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -27,7 +32,7 @@ import java.io.FileOutputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-// Initialize a CameraSelector and select the camera
+// Initialize a CameraSelector
 var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 var frontCam = true
 
@@ -158,51 +163,84 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             runCamera()
     }
 
-    override fun updateBBoxes(bm: Bitmap, faces: List<FirebaseVisionFace>?) {
-        val width = bm.width
-        val height = bm.height
+    override fun updateBBoxes(faces: List<FirebaseVisionFace>?, frm_width: Int, frm_height: Int) {
+        val rect = Rect()
+        window.decorView.getWindowVisibleDisplayFrame(rect)
+        val win_width = rect.right - rect.left
+        val win_height = rect.bottom - rect.top
+        val scaled_win_height: Int
+        val scaled_win_width: Int
+        val offset_x: Int
+        val offset_y: Int
 
-        // Make a mutable copy of the bitmap and flip it
-        val matrix = Matrix().apply { postScale(if (frontCam) -1f else 1f, 1f, width * 0.5f, height * 0.5f) }
-        val new_bm = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, true)
+        // Set resolution
+        if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            scaled_win_height = frm_height
+            scaled_win_width = win_width * scaled_win_height / win_height
+            offset_x = (frm_width - scaled_win_width) / 2
+            offset_y = 0
+            Log.d("JOPA", "Portrait: window($win_width:$win_height), " +
+                    "frm($frm_width:$frm_height), " +
+                    "scaled_window($scaled_win_width:$scaled_win_height), " +
+                    "offset=($offset_x, $offset_y)")
+        }
+        else {
+            scaled_win_width = frm_width
+            scaled_win_height = win_height * scaled_win_width / win_width
+            offset_y = (frm_height - scaled_win_height) / 2
+            offset_x = 0
+
+            Log.d("JOPA", "Landscape: window($win_width:$win_height), " +
+                    "frm($frm_width:$frm_height), " +
+                    "scaled_window($scaled_win_width:$scaled_win_height), " +
+                    "offset=($offset_x, $offset_y)")
+        }
+
+        // Create a bitmap
+        val bm = Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
 
         // Bounding boxes color
         val bboxColor = (255 shl 24) or (255 shl 8)
 
 //        // Make it completely white
-//        for (x in 0 until width)
-//            for (y in 0 until height)
-//                new_bm.setPixel(x, y, 0.inv())
+//        for (x in 0 until scaled_win_width)
+//            for (y in 0 until scaled_win_height)
+//                bm.setPixel(x, y, 0.inv())
 
         // If there are faces, iterate through them and draw bboxes
         if (faces?.isNotEmpty()!!) {
             for (face in faces) {
                 // Draw a bbox around the face
-                var left = if (frontCam) width - face.boundingBox.right
+                var left = if (frontCam) frm_width - face.boundingBox.right
                             else face.boundingBox.left
-                val right = if (frontCam) width - face.boundingBox.left
+                var right = if (frontCam) frm_width - face.boundingBox.left
                             else face.boundingBox.right
-                val bottom = face.boundingBox.bottom
-                val top = face.boundingBox.top
+                var bottom = face.boundingBox.bottom
+                var top = face.boundingBox.top
+
+                left -= offset_x
+                right -= offset_x
+                top -= offset_y
+                bottom -= offset_y
 
                 for (x in left..right) {
-                    if (x !in 0 until width) continue
-                    if (top in 0 until height) new_bm.setPixel(x, top, bboxColor)
-                    if (bottom in 0 until height) new_bm.setPixel(x, bottom, bboxColor)
+                    if (x !in 0 until scaled_win_width) continue
+                    if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
+                    if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bboxColor)
                 }
                 for (y in top..bottom) {
-                    if (y !in 0 until height) continue
-                    if (left in 0 until width) new_bm.setPixel(left, y, bboxColor)
-                    if (right in 0 until width) new_bm.setPixel(right, y, bboxColor)
+                    if (y !in 0 until scaled_win_height) continue
+                    if (left in 0 until scaled_win_width) bm.setPixel(left, y, bboxColor)
+                    if (right in 0 until scaled_win_width) bm.setPixel(right, y, bboxColor)
                 }
             }
         }
 
         // Display bounding boxes
-        bboxesView.setImageBitmap(new_bm)
+        bboxesView.setImageBitmap(bm)
     }
 }
 
 interface BBoxUpdater {
-    fun updateBBoxes(bm: Bitmap, faces: List<FirebaseVisionFace>?)
+    fun updateBBoxes(faces: List<FirebaseVisionFace>?, frm_width: Int, frm_height: Int)
 }

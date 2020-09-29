@@ -35,10 +35,6 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        // If detector is busy, skip the frame
-        if (detectorIsBusy.get())
-            return
-
         // Get rotation of the frame
         val rotation = when (imageProxy.imageInfo.rotationDegrees) {
             // Upside down
@@ -57,6 +53,9 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         // Image must be closed, use a copy of it for analysis
         imageProxy.close()
 
+        // If detector is busy, skip the frame
+        if (detectorIsBusy.get())
+            return
         // Detector is busy now
         detectorIsBusy.set(true)
 
@@ -66,7 +65,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 // Detector is free now
                 detectorIsBusy.set(false)
                 // Pass data to the listener
-                successfulDetection(image.bitmap, faces.result)
+                successfulDetection(faces.result, image.bitmap.width, image.bitmap.height)
             }
             .addOnFailureListener { e ->
                 Log.e("FaceDetector", e.message!!)
@@ -77,7 +76,8 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         listener = _listener
     }
 
-    private fun successfulDetection(bm: Bitmap, faces: List<FirebaseVisionFace>?) {
-        listener.updateBBoxes(bm, faces)
+    private fun successfulDetection(faces: List<FirebaseVisionFace>?, width: Int, height: Int) {
+        //! TODO: recognition
+        listener.updateBBoxes(faces, width, height)
     }
 }
