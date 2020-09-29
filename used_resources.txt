@@ -65,7 +65,9 @@ Monday 28.09.20
 	https://stackoverflow.com/questions/62541934/how-to-set-a-box-on-camerax-preview-so-as-to-processes-it-using-imageanalysis-in
 	https://stackoverflow.com/questions/14388498/how-do-i-manipulate-a-view-from-another-class-in-android
 	https://stackoverflow.com/questions/10996479/how-to-update-a-textview-of-an-activity-from-another-class
-
+Tuesday 29.09.20
+	https://developer.android.com/training/appbar/setting-up
+	https://stackoverflow.com/questions/3407256/height-of-status-bar-in-android
 
 
 
