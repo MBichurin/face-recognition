@@ -25,6 +25,8 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
+        val t_start = System.currentTimeMillis()
+
         // Get rotation of the frame
         val rotation = when (imageProxy.imageInfo.rotationDegrees) {
             // Upside down
@@ -40,30 +42,33 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         // Convert to FirebaseVisionImage + rotate
         val image = FirebaseVisionImage.fromMediaImage(imageProxy.image!!, rotation)
 
-        val bm_to_analyze = image.bitmap
+        // Image must be closed, use a copy of it for analysis
+        imageProxy.close()
 
         // Configure and build a detector
-        val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder().build()
+        val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder()
+            .setPerformanceMode(FirebaseVisionFaceDetectorOptions.FAST)
+            .build()
         val detector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions)
 
         // Pass the image to the detector
         detector.detectInImage(image)
             .addOnCompleteListener { faces ->
-                successfulDetection(faces.result)
+                successfulDetection(image.bitmap, faces.result)
             }
             .addOnFailureListener { e ->
                 Log.e("FaceDetector", e.message!!)
             }
 
-        // Image must be closed, use a copy of it for analysis
-        imageProxy.close()
+        val t_finish = System.currentTimeMillis()
+        Log.d("JOPA", (t_finish - t_start).toString())
     }
 
     fun setBBoxUpdaterListener(_listener: BBoxUpdater) {
         listener = _listener
     }
 
-    private fun successfulDetection(faces: List<FirebaseVisionFace>?) {
-        listener.updateBBoxes(faces)
+    private fun successfulDetection(bm: Bitmap, faces: List<FirebaseVisionFace>?) {
+        listener.updateBBoxes(bm, faces)
     }
 }
