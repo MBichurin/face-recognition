@@ -35,6 +35,10 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
+        // If detector is busy, skip the frame
+        if (detectorIsBusy.get())
+            return
+
         // Get rotation of the frame
         val rotation = when (imageProxy.imageInfo.rotationDegrees) {
             // Upside down
@@ -53,21 +57,12 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         // Image must be closed, use a copy of it for analysis
         imageProxy.close()
 
-
-        if (detectorIsBusy.get())
-            return
-
         // Detector is busy now
         detectorIsBusy.set(true)
-
-        val t_start = System.currentTimeMillis()
 
         // Pass the image to the detector
         detector.detectInImage(image)
             .addOnCompleteListener { faces ->
-                val t_finish = System.currentTimeMillis()
-                Log.d("JOPA", (t_finish - t_start).toString())
-
                 // Detector is free now
                 detectorIsBusy.set(false)
                 // Pass data to the listener
