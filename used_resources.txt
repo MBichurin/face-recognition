@@ -68,10 +68,9 @@ Monday 28.09.20
 Tuesday 29.09.20
 	https://developer.android.com/training/appbar/setting-up
 	https://stackoverflow.com/questions/3407256/height-of-status-bar-in-android
-
-
-
-
-Planned:
-	https://www.youtube.com/watch?v=8ZD6_SDsKWI
-	https://towardsdatascience.com/using-facenet-for-on-device-face-recognition-with-android-f84e36e19761
+Wednesdat 30.09.20
+	-
+Thursday 01.10.20
+	https://stackoverflow.com/questions/57908177/get-camerax-final-resolution
+	https://developer.android.com/reference/kotlin/java/nio/ByteBuffer
+	https://www.mindprod.com/jgloss/bytebuffer.html
