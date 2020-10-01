@@ -171,8 +171,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
                               analyze_width: Int, analyze_height: Int) {
-        //! TODO: edit for different width and height of preview and image_analysis
-
         val rect = Rect()
         window.decorView.getWindowVisibleDisplayFrame(rect)
         val win_width = rect.right - rect.left

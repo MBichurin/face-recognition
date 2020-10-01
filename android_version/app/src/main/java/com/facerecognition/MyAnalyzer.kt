@@ -11,6 +11,7 @@ import android.view.Surface
 import android.view.Surface.*
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.core.graphics.get
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
@@ -19,6 +20,8 @@ import kotlinx.android.synthetic.main.activity_main.bboxesView
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
@@ -32,6 +35,9 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     // To not detect faces on every frame, just one at once
     private var detectorIsBusy = AtomicBoolean(false)
+
+    // Facenet model
+    private val facenet = Interpreter
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
@@ -65,7 +71,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 // Detector is free now
                 detectorIsBusy.set(false)
                 // Pass data to the listener
-                successfulDetection(faces.result, image.bitmap.width, image.bitmap.height)
+                successfulDetection(faces.result, image.bitmap)
             }
             .addOnFailureListener { e ->
                 Log.e("FaceDetector", e.message!!)
@@ -76,8 +82,44 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         listener = _listener
     }
 
-    private fun successfulDetection(faces: List<FirebaseVisionFace>?, width: Int, height: Int) {
+    private fun successfulDetection(faces: List<FirebaseVisionFace>?, bitmap: Bitmap) {
         //! TODO: recognition
-        listener.updateBBoxes(faces, width, height)
+        val img_size = 160
+
+        if (faces?.isNotEmpty()!!) {
+            for (face in faces) {
+                // Crop
+                var img_face = Bitmap.createBitmap(bitmap,
+                    face.boundingBox.left, face.boundingBox.top,
+                    face.boundingBox.width(), face.boundingBox.height())
+
+                // Resize
+                img_face = Bitmap.createScaledBitmap(img_face, img_size, img_size, false)
+
+                // Normalize and convert to ByteBuffer for faster I/O
+                val img_buffer = ByteBuffer.allocateDirect(img_size * img_size * 3 * 4)
+                img_buffer.order(ByteOrder.nativeOrder())
+
+                for (x in 0 until img_size)
+                    for (y in 0 until img_size) {
+                        val pixel = img_face.getPixel(x, y)
+                        // Red
+                        var next = (((pixel shr 16) and 255) - 127.5) / 127.5
+                        img_buffer.putFloat(next.toFloat())
+                        // Green
+                        next = (((pixel shr 8) and 255) - 127.5) / 127.5
+                        img_buffer.putFloat(next.toFloat())
+                        // Blue
+                        next = ((pixel and 255) - 127.5) / 127.5
+                        img_buffer.putFloat(next.toFloat())
+                    }
+
+                // Run Facenet
+                val output = Array(1) {FloatArray(128)}
+                interpreter.run
+            }
+        }
+
+        listener.updateBBoxes(faces, bitmap.width, bitmap.height)
     }
 }
