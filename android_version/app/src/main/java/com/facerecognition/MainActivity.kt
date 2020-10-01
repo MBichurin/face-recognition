@@ -44,6 +44,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var myAnalyzer: MyAnalyzer
+    private var preview_width = -1
+    private var preview_height = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,6 +138,10 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                         // Bind camera selector and use-cases to cameraProvider
                         cameraProvider.bindToLifecycle(
                                 this, cameraSelector, imageAnalyser, preview)
+
+                        val preview_size = preview.attachedSurfaceResolution ?: Size(0, 0)
+                        preview_width = preview_size.width
+                        preview_height = preview_size.height
                     }
                     catch(exc: Exception) {
                         Log.e("CameraX", "Use case binding failed", exc)
@@ -163,7 +169,10 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             runCamera()
     }
 
-    override fun updateBBoxes(faces: List<FirebaseVisionFace>?, frm_width: Int, frm_height: Int) {
+    override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
+                              analyze_width: Int, analyze_height: Int) {
+        //! TODO: edit for different width and height of preview and image_analysis
+
         val rect = Rect()
         window.decorView.getWindowVisibleDisplayFrame(rect)
         val win_width = rect.right - rect.left
@@ -175,25 +184,30 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
         // Set resolution
         if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-            scaled_win_height = frm_height
+            if (preview_width > preview_height) {
+                // Swap
+                preview_height += preview_width
+                preview_width = preview_height - preview_width
+                preview_height -= preview_width
+            }
+
+            scaled_win_height = preview_height
             scaled_win_width = win_width * scaled_win_height / win_height
-            offset_x = (frm_width - scaled_win_width) / 2
+            offset_x = (preview_width - scaled_win_width) / 2
             offset_y = 0
-            Log.d("JOPA", "Portrait: window($win_width:$win_height), " +
-                    "frm($frm_width:$frm_height), " +
-                    "scaled_window($scaled_win_width:$scaled_win_height), " +
-                    "offset=($offset_x, $offset_y)")
         }
         else {
-            scaled_win_width = frm_width
-            scaled_win_height = win_height * scaled_win_width / win_width
-            offset_y = (frm_height - scaled_win_height) / 2
-            offset_x = 0
+            if (preview_width < preview_height) {
+                // Swap
+                preview_height += preview_width
+                preview_width = preview_height - preview_width
+                preview_height -= preview_width
+            }
 
-            Log.d("JOPA", "Landscape: window($win_width:$win_height), " +
-                    "frm($frm_width:$frm_height), " +
-                    "scaled_window($scaled_win_width:$scaled_win_height), " +
-                    "offset=($offset_x, $offset_y)")
+            scaled_win_width = preview_width
+            scaled_win_height = win_height * scaled_win_width / win_width
+            offset_y = (preview_height - scaled_win_height) / 2
+            offset_x = 0
         }
 
         // Create a bitmap
@@ -210,19 +224,27 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         // If there are faces, iterate through them and draw bboxes
         if (faces?.isNotEmpty()!!) {
             for (face in faces) {
-                // Draw a bbox around the face
-                var left = if (frontCam) frm_width - face.boundingBox.right
+                // Get coordinates relative to analyzer frame
+                var left = if (frontCam) analyze_width - face.boundingBox.right
                             else face.boundingBox.left
-                var right = if (frontCam) frm_width - face.boundingBox.left
+                var right = if (frontCam) analyze_width - face.boundingBox.left
                             else face.boundingBox.right
                 var bottom = face.boundingBox.bottom
                 var top = face.boundingBox.top
 
+                // Cast to coordinates relative to preview frame
+                left = (left * preview_width) / analyze_width as Int
+                right = (right * preview_width) / analyze_width as Int
+                top = (top * preview_height) / analyze_height as Int
+                bottom = (bottom * preview_height) / analyze_height as Int
+
+                // Cast to coordinates relative to scaled window
                 left -= offset_x
                 right -= offset_x
                 top -= offset_y
                 bottom -= offset_y
 
+                // Draw a bbox around the face
                 for (x in left..right) {
                     if (x !in 0 until scaled_win_width) continue
                     if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
@@ -242,5 +264,5 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 }
 
 interface BBoxUpdater {
-    fun updateBBoxes(faces: List<FirebaseVisionFace>?, frm_width: Int, frm_height: Int)
+    fun updateBBoxes(faces: List<FirebaseVisionFace>?, analyze_width: Int, analyze_height: Int)
 }
