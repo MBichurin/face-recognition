@@ -7,6 +7,11 @@ android {
     compileSdkVersion 30
     buildToolsVersion "30.0.2"
 
+    aaptOptions {
+        // Prevent Android from compressing TFLite models when generating the app binary
+        noCompress "tflite"
+    }
+
     defaultConfig {
         applicationId "com.facerecognition"
         minSdkVersion 21
@@ -48,4 +53,9 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
     // If you want to additionally use the CameraX View class
     implementation "androidx.camera:camera-view:1.0.0-alpha16"
+
+    // TFLite
+    implementation('org.tensorflow:tensorflow-lite:0.0.0-nightly') {changing = true}
+    implementation('org.tensorflow:tensorflow-lite-gpu:0.0.0-nightly') {changing = true}
+    implementation('org.tensorflow:tensorflow-lite-support:0.0.0-nightly') {changing = true}
 }

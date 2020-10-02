@@ -17,6 +17,7 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
 import kotlinx.android.synthetic.main.activity_main.bboxesView
+import org.tensorflow.lite.Interpreter
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -37,7 +38,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
     private var detectorIsBusy = AtomicBoolean(false)
 
     // Facenet model
-    private val facenet = Interpreter
+    private val facenet = Interpreter(File("facenet.tflite"))
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
@@ -100,9 +101,14 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 val img_buffer = ByteBuffer.allocateDirect(img_size * img_size * 3 * 4)
                 img_buffer.order(ByteOrder.nativeOrder())
 
-                for (x in 0 until img_size)
-                    for (y in 0 until img_size) {
-                        val pixel = img_face.getPixel(x, y)
+                // Get all pixels
+                val pixels = IntArray(img_size * img_size)
+                bitmap.getPixels(pixels, 0, img_size, 0, 0, img_size, img_size)
+
+                for (y in 0 until img_size)
+                    for (x in 0 until img_size) {
+                        // Get the current pixel
+                        val pixel = pixels[y * img_size + x]
                         // Red
                         var next = (((pixel shr 16) and 255) - 127.5) / 127.5
                         img_buffer.putFloat(next.toFloat())
