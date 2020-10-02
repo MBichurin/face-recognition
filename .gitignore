@@ -1,6 +1,7 @@
 .idea/
 androidTest/
 test/
+tf_examples/
 *.xml
 *.dat
 *.avi
@@ -8,3 +9,4 @@ test/
 *.jpg
 *.apk
 *.pro
+*.tflite
