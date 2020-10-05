@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         // Set the main activity as a listener for our analyzer
         myAnalyzer.setBBoxUpdaterListener(this)
         // Initialize interpreter for recognition
-        myAnalyzer.initInterpreter(assets)
+        myAnalyzer.initModel(assets)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 

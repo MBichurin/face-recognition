@@ -20,13 +20,14 @@ import java.nio.channels.FileChannel
 import java.util.concurrent.atomic.AtomicBoolean
 import android.os.Handler
 import android.os.Looper
+import java.nio.MappedByteBuffer
 import java.util.*
-
-// Facenet model
-private lateinit var facenet: Interpreter
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater
+
+    // Model file
+    private lateinit var modelFile: MappedByteBuffer
 
     // Configure and build a detector
     private val detectorOptions = FirebaseVisionFaceDetectorOptions.Builder()
@@ -84,35 +85,30 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     private fun successfulDetection(faces: List<FirebaseVisionFace>?, bitmap: Bitmap) {
         if (faces?.isNotEmpty()!!) {
-            val recognition = Recognition(faces, bitmap)
+            val recognition = Recognition(faces, bitmap, modelFile)
             Thread(recognition).start()
         }
 
         listener.updateBBoxes(faces, bitmap.width, bitmap.height)
     }
 
-    fun initInterpreter(assetManager: AssetManager) {
+    fun initModel(assetManager: AssetManager) {
         val fileDescriptor = assetManager.openFd("facenet.tflite")
         val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
         val fileChannel = inputStream.channel
         val startOffset = fileDescriptor.startOffset
         val declaredLen = fileDescriptor.declaredLength
 
-        val modelFile = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLen)
-
-
-        try {
-            val options = Interpreter.Options()
-            options.setNumThreads(8)
-            facenet = Interpreter(modelFile, options)
-        } catch (e: Exception) {
-            throw RuntimeException(e)
-        }
+        modelFile = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLen)
     }
 
     class Recognition constructor(private val faces: List<FirebaseVisionFace>,
-                                  private val bitmap: Bitmap): Runnable {
+                                  private val bitmap: Bitmap,
+                                  private val modelFile: MappedByteBuffer): Runnable {
         override fun run() {
+            // Interpreter of facenet model
+            val facenet = Interpreter(modelFile)
+
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             // Initialize Descriptors
             val Desctiptors = Array(faces.size) { FloatArray(128) }
