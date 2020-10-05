@@ -172,7 +172,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
-                              analyze_width: Int, analyze_height: Int) {
+                              analyze_width: Int, analyze_height: Int,
+                              Descriptors: Array<FloatArray>) {
         val rect = Rect()
         window.decorView.getWindowVisibleDisplayFrame(rect)
         val win_width = rect.right - rect.left
@@ -223,7 +224,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
         // If there are faces, iterate through them and draw bboxes
         if (faces?.isNotEmpty()!!) {
-            for (face in faces) {
+            for ((face, embedding) in faces zip Descriptors) {
+                Log.d("JOPA", "${embedding.size}")
                 // Get coordinates relative to analyzer frame
                 var left = if (frontCam) analyze_width - face.boundingBox.right
                             else face.boundingBox.left
@@ -264,5 +266,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 }
 
 interface BBoxUpdater {
-    fun updateBBoxes(faces: List<FirebaseVisionFace>?, analyze_width: Int, analyze_height: Int)
+    fun updateBBoxes(faces: List<FirebaseVisionFace>?, analyze_width: Int, analyze_height: Int,
+                     Descriptors: Array<FloatArray>)
 }

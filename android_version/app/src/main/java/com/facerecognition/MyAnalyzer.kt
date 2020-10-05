@@ -23,6 +23,9 @@ import android.os.Looper
 import java.nio.MappedByteBuffer
 import java.util.*
 
+// To store embeddings
+private var Desctiptors = Array(0) { FloatArray(128) }
+
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater
 
@@ -89,7 +92,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
             Thread(recognition).start()
         }
 
-        listener.updateBBoxes(faces, bitmap.width, bitmap.height)
+        listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
     }
 
     fun initModel(assetManager: AssetManager) {
@@ -111,7 +114,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             // Initialize Descriptors
-            val Desctiptors = Array(faces.size) { FloatArray(128) }
+            Desctiptors = Array(faces.size) { FloatArray(128) }
             // Image size
             val img_size = 160
             // Iterate through faces
@@ -148,17 +151,9 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 // Run Facenet
                 val output = Array(1) {FloatArray(128)}
                 facenet.run(img_buffer, output)
-                Log.d("JOPA", "Facenet output: " + "[${output[0].size}] " + ArrayToString(output[0]))
 
                 Desctiptors[i] = output[0]
             }
-        }
-
-        private fun ArrayToString(A: FloatArray): String {
-            var s = ""
-            for (el in A)
-                s += "$el "
-            return s
         }
 
         private fun CropFace(frame_bm: Bitmap, face_bbox: Rect): Bitmap {
