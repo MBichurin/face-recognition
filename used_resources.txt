@@ -74,3 +74,15 @@ Thursday 01.10.20
 	https://stackoverflow.com/questions/57908177/get-camerax-final-resolution
 	https://developer.android.com/reference/kotlin/java/nio/ByteBuffer
 	https://www.mindprod.com/jgloss/bytebuffer.html
+Friday 02.10.20
+	https://github.com/tensorflow/examples/blob/master/lite/examples/object_detection/android/README.md
+	https://colab.research.google.com/github/tensorflow/examples/blob/master/lite/codelabs/flower_classification/ml/Flower_Classification_with_TFLite_Model_Maker.ipynb#scrollTo=KKRaYHABpob5
+	https://codelabs.developers.google.com/codelabs/recognize-flowers-with-tensorflow-on-android/#4
+	https://www.tensorflow.org/lite/convert
+	https://github.com/fizyr/keras-retinanet/issues/207
+	https://stackoverflow.com/questions/50443411/how-to-load-a-tflite-model-in-script/51986982#51986982
+	https://medium.com/@teresa.wu/tensorflow-image-recognition-on-android-with-kotlin-cee8d977ae9
+
+Monday 05.10.20
+	https://www.youtube.com/watch?v=QfQE1ayCzf8
+	https://kotlinlang.org/docs/tutorials/kotlin-for-py/classes.html
