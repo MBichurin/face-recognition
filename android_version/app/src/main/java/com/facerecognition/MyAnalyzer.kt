@@ -1,32 +1,29 @@
 package com.facerecognition
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.res.AssetManager
-import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
-import android.media.Image
-import android.os.Environment
+import android.graphics.Bitmap
+import android.graphics.Rect
 import android.util.Log
-import android.view.Surface
 import android.view.Surface.*
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.core.graphics.get
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
-import kotlinx.android.synthetic.main.activity_main.bboxesView
 import org.tensorflow.lite.Interpreter
-import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.util.concurrent.atomic.AtomicBoolean
+import android.os.Handler
+import android.os.Looper
+import java.util.*
+
+// Facenet model
+private lateinit var facenet: Interpreter
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater
@@ -40,8 +37,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
     // To not detect faces on every frame, just one at once
     private var detectorIsBusy = AtomicBoolean(false)
 
-    // Facenet model
-    private lateinit var facenet: Interpreter
+
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
@@ -87,11 +83,43 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
     }
 
     private fun successfulDetection(faces: List<FirebaseVisionFace>?, bitmap: Bitmap) {
-        //! TODO: recognition
-        val img_size = 160
-
         if (faces?.isNotEmpty()!!) {
-            for (face in faces) {
+            val recognition = Recognition(faces, bitmap)
+            Thread(recognition).start()
+        }
+
+        listener.updateBBoxes(faces, bitmap.width, bitmap.height)
+    }
+
+    fun initInterpreter(assetManager: AssetManager) {
+        val fileDescriptor = assetManager.openFd("facenet.tflite")
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+        val fileChannel = inputStream.channel
+        val startOffset = fileDescriptor.startOffset
+        val declaredLen = fileDescriptor.declaredLength
+
+        val modelFile = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLen)
+
+
+        try {
+            val options = Interpreter.Options()
+            options.setNumThreads(8)
+            facenet = Interpreter(modelFile, options)
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+    }
+
+    class Recognition constructor(private val faces: List<FirebaseVisionFace>,
+                                  private val bitmap: Bitmap): Runnable {
+        override fun run() {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            // Initialize Descriptors
+            val Desctiptors = Array(faces.size) { FloatArray(128) }
+            // Image size
+            val img_size = 160
+            // Iterate through faces
+            for ((i, face) in faces.withIndex()) {
                 // Crop
                 var img_face = CropFace(bitmap, face.boundingBox)
 
@@ -124,47 +152,35 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 // Run Facenet
                 val output = Array(1) {FloatArray(128)}
                 facenet.run(img_buffer, output)
-                Log.d("JOPA", "Facenet output: " + ArrayToString(output[0]))
+                Log.d("JOPA", "Facenet output: " + "[${output[0].size}] " + ArrayToString(output[0]))
+
+                Desctiptors[i] = output[0]
             }
         }
 
-        listener.updateBBoxes(faces, bitmap.width, bitmap.height)
-    }
+        private fun ArrayToString(A: FloatArray): String {
+            var s = ""
+            for (el in A)
+                s += "$el "
+            return s
+        }
 
-    private fun ArrayToString(A: FloatArray): String {
-        var s = ""
-        for (el in A)
-            s += "$el "
-        return s
-    }
+        private fun CropFace(frame_bm: Bitmap, face_bbox: Rect): Bitmap {
+            val bbox_left = max(face_bbox.left, 0)
+            val bbox_top = max(face_bbox.top, 0)
+            val bbox_width = min(face_bbox.width() + face_bbox.left - bbox_left,
+                frame_bm.width - bbox_left)
+            val bbox_height = min(face_bbox.height() + face_bbox.top - bbox_top,
+                frame_bm.height - bbox_top)
+            return Bitmap.createBitmap(frame_bm, bbox_left, bbox_top, bbox_width, bbox_height)
+        }
 
-    private fun CropFace(frame_bm: Bitmap, face_bbox: Rect): Bitmap {
-        val bbox_left = max(face_bbox.left, 0)
-        val bbox_top = max(face_bbox.top, 0)
-        val bbox_width = min(face_bbox.width() + face_bbox.left - bbox_left,
-            frame_bm.width - bbox_left)
-        val bbox_height = min(face_bbox.height() + face_bbox.top - bbox_top,
-            frame_bm.height - bbox_top)
-        return Bitmap.createBitmap(frame_bm, bbox_left, bbox_top, bbox_width, bbox_height)
-    }
+        private fun min(a: Int, b: Int): Int {
+            return if (a < b) a else b
+        }
 
-    private fun min(a: Int, b: Int): Int {
-        return if (a < b) a else b
-    }
-
-    private fun max(a: Int, b: Int): Int {
-        return if (a > b) a else b
-    }
-
-    fun initInterpreter(assetManager: AssetManager) {
-        val fileDescriptor = assetManager.openFd("facenet.tflite")
-        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
-        val fileChannel = inputStream.channel
-        val startOffset = fileDescriptor.startOffset
-        val declaredLen = fileDescriptor.declaredLength
-
-        val modelFile = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLen)
-
-        facenet = Interpreter(modelFile)
+        private fun max(a: Int, b: Int): Int {
+            return if (a > b) a else b
+        }
     }
 }
