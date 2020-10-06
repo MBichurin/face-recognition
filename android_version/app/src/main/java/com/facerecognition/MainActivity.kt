@@ -213,6 +213,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         }
         else {
             addFaceButton.setImageResource(android.R.drawable.ic_delete)
+            Toast.makeText(this, "Take 5 shots with a person you'd like to add.",
+                Toast.LENGTH_LONG).show()
             AddFaceMode = true
         }
     }

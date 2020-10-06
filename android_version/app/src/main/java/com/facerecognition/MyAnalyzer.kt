@@ -108,54 +108,74 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
     class Recognition constructor(private val faces: List<FirebaseVisionFace>,
                                   private val bitmap: Bitmap,
                                   private val modelFile: MappedByteBuffer): Runnable {
+        // Image size
+        private val img_size = 160
+
         override fun run() {
             // Interpreter of facenet model
             val facenet = Interpreter(modelFile)
 
-            // Initialize Descriptors
-            Desctiptors = Array(faces.size) { FloatArray(128) }
-            // Image size
-            val img_size = 160
-            // Iterate through faces
-            for ((i, face) in faces.withIndex()) {
-                // Crop
-                var img_face = CropFace(bitmap, face.boundingBox)
+            if (AddFaceMode) {
+                // Initialize Descriptors
+                Desctiptors = Array(1) { FloatArray(128) }
 
-                // Resize
-                img_face = Bitmap.createScaledBitmap(img_face, img_size, img_size, false)
-
-                // Initialize a bytebuffer
-                val img_buffer = ByteBuffer.allocateDirect(img_size * img_size * 3 * 4)
-                img_buffer.order(ByteOrder.nativeOrder())
-
-                // Get all pixels
-                val pixels = IntArray(img_size * img_size)
-                img_face.getPixels(pixels, 0, img_size, 0, 0, img_size, img_size)
-
-                for (y in 0 until img_size)
-                    for (x in 0 until img_size) {
-                        // Get the current pixel
-                        val pixel = pixels[y * img_size + x]
-                        // Red
-                        var next = (((pixel shr 16) and 255) - 127.5) / 127.5
-                        img_buffer.putFloat(next.toFloat())
-                        // Green
-                        next = (((pixel shr 8) and 255) - 127.5) / 127.5
-                        img_buffer.putFloat(next.toFloat())
-                        // Blue
-                        next = ((pixel and 255) - 127.5) / 127.5
-                        img_buffer.putFloat(next.toFloat())
-                    }
+                // Get only the first face
+                val img_buffer = getFaceBuffer(faces[0])
 
                 // Run Facenet
-                val output = Array(1) {FloatArray(128)}
-                facenet.run(img_buffer, output)
+                facenet.run(img_buffer, Desctiptors)
+            }
+            else {
+                // Initialize Descriptors
+                Desctiptors = Array(faces.size) { FloatArray(128) }
 
-                Desctiptors[i] = output[0]
+                // Iterate through faces
+                for ((i, face) in faces.withIndex()) {
+                    val img_buffer = getFaceBuffer(face)
+
+                    // Run Facenet
+                    val output = Array(1) {FloatArray(128)}
+                    facenet.run(img_buffer, output)
+
+                    Desctiptors[i] = output[0]
+                }
             }
 
             // Descriptor is free now
             detect_describe_isBusy.set(false)
+        }
+
+        private fun getFaceBuffer(face: FirebaseVisionFace): ByteBuffer {
+            // Crop
+            var img_face = CropFace(bitmap, face.boundingBox)
+
+            // Resize
+            img_face = Bitmap.createScaledBitmap(img_face, img_size, img_size, false)
+
+            // Initialize a bytebuffer
+            val img_buffer = ByteBuffer.allocateDirect(img_size * img_size * 3 * 4)
+            img_buffer.order(ByteOrder.nativeOrder())
+
+            // Get all pixels
+            val pixels = IntArray(img_size * img_size)
+            img_face.getPixels(pixels, 0, img_size, 0, 0, img_size, img_size)
+
+            for (y in 0 until img_size)
+                for (x in 0 until img_size) {
+                    // Get the current pixel
+                    val pixel = pixels[y * img_size + x]
+                    // Red
+                    var next = (((pixel shr 16) and 255) - 127.5) / 127.5
+                    img_buffer.putFloat(next.toFloat())
+                    // Green
+                    next = (((pixel shr 8) and 255) - 127.5) / 127.5
+                    img_buffer.putFloat(next.toFloat())
+                    // Blue
+                    next = ((pixel and 255) - 127.5) / 127.5
+                    img_buffer.putFloat(next.toFloat())
+                }
+
+            return img_buffer
         }
 
         private fun CropFace(frame_bm: Bitmap, face_bbox: Rect): Bitmap {
