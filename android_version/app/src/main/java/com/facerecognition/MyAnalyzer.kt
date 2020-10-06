@@ -18,13 +18,13 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.util.concurrent.atomic.AtomicBoolean
-import android.os.Handler
-import android.os.Looper
 import java.nio.MappedByteBuffer
-import java.util.*
 
 // To store embeddings
 private var Desctiptors = Array(0) { FloatArray(128) }
+
+// To not detect faces on every frame, just one at once
+private var detect_describe_isBusy = AtomicBoolean(false)
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater
@@ -37,10 +37,6 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         .setPerformanceMode(FirebaseVisionFaceDetectorOptions.FAST)
         .build()
     private val detector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions)
-
-    // To not detect faces on every frame, just one at once
-    private var detectorIsBusy = AtomicBoolean(false)
-
 
 
     @SuppressLint("UnsafeExperimentalUsageError")
@@ -64,20 +60,20 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         imageProxy.close()
 
         // If detector is busy, skip the frame
-        if (detectorIsBusy.get())
+        if (detect_describe_isBusy.get())
             return
-        // Detector is busy now
-        detectorIsBusy.set(true)
+        // Detector or Descriptor is busy now
+        detect_describe_isBusy.set(true)
 
         // Pass the image to the detector
         detector.detectInImage(image)
             .addOnCompleteListener { faces ->
-                // Detector is free now
-                detectorIsBusy.set(false)
                 // Pass data to the listener
                 successfulDetection(faces.result, image.bitmap)
             }
             .addOnFailureListener { e ->
+                // Detector is free now
+                detect_describe_isBusy.set(false)
                 Log.e("FaceDetector", e.message!!)
             }
     }
@@ -90,6 +86,10 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         if (faces?.isNotEmpty()!!) {
             val recognition = Recognition(faces, bitmap, modelFile)
             Thread(recognition).start()
+        }
+        else {
+            // Descriptor is free now
+            detect_describe_isBusy.set(false)
         }
 
         listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
@@ -112,13 +112,14 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
             // Interpreter of facenet model
             val facenet = Interpreter(modelFile)
 
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+//            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             // Initialize Descriptors
             Desctiptors = Array(faces.size) { FloatArray(128) }
             // Image size
             val img_size = 160
             // Iterate through faces
             for ((i, face) in faces.withIndex()) {
+                Log.d("JOPA", "ind(v1) = $i")
                 // Crop
                 var img_face = CropFace(bitmap, face.boundingBox)
 
@@ -152,8 +153,12 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 val output = Array(1) {FloatArray(128)}
                 facenet.run(img_buffer, output)
 
+                Log.d("JOPA", "ind(v2) = $i")
                 Desctiptors[i] = output[0]
             }
+
+            // Descriptor is free now
+            detect_describe_isBusy.set(false)
         }
 
         private fun CropFace(frame_bm: Bitmap, face_bbox: Rect): Bitmap {

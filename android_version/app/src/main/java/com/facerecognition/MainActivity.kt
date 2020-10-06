@@ -225,7 +225,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         // If there are faces, iterate through them and draw bboxes
         if (faces?.isNotEmpty()!!) {
             for ((face, embedding) in faces zip Descriptors) {
-                Log.d("JOPA", "${embedding.size}")
                 // Get coordinates relative to analyzer frame
                 var left = if (frontCam) analyze_width - face.boundingBox.right
                             else face.boundingBox.left
