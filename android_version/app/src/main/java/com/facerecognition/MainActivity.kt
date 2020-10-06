@@ -19,6 +19,7 @@ import android.view.Surface.ROTATION_0
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -33,7 +34,10 @@ import java.util.concurrent.Executors
 
 // Initialize a CameraSelector
 var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+// To check whether it's front or rear cam turned on
 var frontCam = true
+// Application mode (Recognition or Face adding)
+var AddFaceMode = false
 
 class MainActivity : AppCompatActivity(), BBoxUpdater {
     // App permissions
@@ -202,6 +206,17 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             runCamera()
     }
 
+    fun changeMode(view: View) {
+        if (AddFaceMode) {
+            addFaceButton.setImageResource(android.R.drawable.ic_input_add)
+            AddFaceMode = false
+        }
+        else {
+            addFaceButton.setImageResource(android.R.drawable.ic_delete)
+            AddFaceMode = true
+        }
+    }
+
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
                               analyze_width: Int, analyze_height: Int,
                               Descriptors: Array<FloatArray>) {
@@ -245,47 +260,85 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         // Create a bitmap
         val bm = Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
 
-        // Bounding boxes color
-        val bboxColor = (255 shl 24) or (255 shl 8)
+        if (AddFaceMode) {
+            // Bounding boxes color
+            val bboxColor = (255 shl 24) or 255
 
-//        // Make it completely white
-//        for (x in 0 until scaled_win_width)
-//            for (y in 0 until scaled_win_height)
-//                bm.setPixel(x, y, 0.inv())
+            // If there are faces, iterate through them and draw bboxes
+            if (faces?.isNotEmpty()!!) {
+                for ((face, embedding) in faces zip Descriptors) {
+                    // Get coordinates relative to analyzer frame
+                    var left = if (frontCam) analyze_width - face.boundingBox.right
+                    else face.boundingBox.left
+                    var right = if (frontCam) analyze_width - face.boundingBox.left
+                    else face.boundingBox.right
+                    var bottom = face.boundingBox.bottom
+                    var top = face.boundingBox.top
 
-        // If there are faces, iterate through them and draw bboxes
-        if (faces?.isNotEmpty()!!) {
-            for ((face, embedding) in faces zip Descriptors) {
-                // Get coordinates relative to analyzer frame
-                var left = if (frontCam) analyze_width - face.boundingBox.right
-                            else face.boundingBox.left
-                var right = if (frontCam) analyze_width - face.boundingBox.left
-                            else face.boundingBox.right
-                var bottom = face.boundingBox.bottom
-                var top = face.boundingBox.top
+                    // Cast to coordinates relative to preview frame
+                    left = (left * preview_width) / analyze_width as Int
+                    right = (right * preview_width) / analyze_width as Int
+                    top = (top * preview_height) / analyze_height as Int
+                    bottom = (bottom * preview_height) / analyze_height as Int
 
-                // Cast to coordinates relative to preview frame
-                left = (left * preview_width) / analyze_width as Int
-                right = (right * preview_width) / analyze_width as Int
-                top = (top * preview_height) / analyze_height as Int
-                bottom = (bottom * preview_height) / analyze_height as Int
+                    // Cast to coordinates relative to scaled window
+                    left -= offset_x
+                    right -= offset_x
+                    top -= offset_y
+                    bottom -= offset_y
 
-                // Cast to coordinates relative to scaled window
-                left -= offset_x
-                right -= offset_x
-                top -= offset_y
-                bottom -= offset_y
-
-                // Draw a bbox around the face
-                for (x in left..right) {
-                    if (x !in 0 until scaled_win_width) continue
-                    if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
-                    if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bboxColor)
+                    // Draw a bbox around the face
+                    for (x in left..right) {
+                        if (x !in 0 until scaled_win_width) continue
+                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
+                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bboxColor)
+                    }
+                    for (y in top..bottom) {
+                        if (y !in 0 until scaled_win_height) continue
+                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, bboxColor)
+                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, bboxColor)
+                    }
                 }
-                for (y in top..bottom) {
-                    if (y !in 0 until scaled_win_height) continue
-                    if (left in 0 until scaled_win_width) bm.setPixel(left, y, bboxColor)
-                    if (right in 0 until scaled_win_width) bm.setPixel(right, y, bboxColor)
+            }
+        }
+        else {
+            // Bounding boxes color
+            val bboxColor = (255 shl 24) or (255 shl 8)
+
+            // If there are faces, iterate through them and draw bboxes
+            if (faces?.isNotEmpty()!!) {
+                for ((face, embedding) in faces zip Descriptors) {
+                    // Get coordinates relative to analyzer frame
+                    var left = if (frontCam) analyze_width - face.boundingBox.right
+                    else face.boundingBox.left
+                    var right = if (frontCam) analyze_width - face.boundingBox.left
+                    else face.boundingBox.right
+                    var bottom = face.boundingBox.bottom
+                    var top = face.boundingBox.top
+
+                    // Cast to coordinates relative to preview frame
+                    left = (left * preview_width) / analyze_width as Int
+                    right = (right * preview_width) / analyze_width as Int
+                    top = (top * preview_height) / analyze_height as Int
+                    bottom = (bottom * preview_height) / analyze_height as Int
+
+                    // Cast to coordinates relative to scaled window
+                    left -= offset_x
+                    right -= offset_x
+                    top -= offset_y
+                    bottom -= offset_y
+
+                    // Draw a bbox around the face
+                    for (x in left..right) {
+                        if (x !in 0 until scaled_win_width) continue
+                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
+                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bboxColor)
+                    }
+                    for (y in top..bottom) {
+                        if (y !in 0 until scaled_win_height) continue
+                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, bboxColor)
+                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, bboxColor)
+                    }
                 }
             }
         }
