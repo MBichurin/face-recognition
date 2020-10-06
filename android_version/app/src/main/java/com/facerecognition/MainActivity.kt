@@ -56,6 +56,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     // Map of saved identities and name of file it's stored in
     private var SavedFaces = emptyMap<String, FloatArray>()
     private val IdMap_file = "/saved_faces.ser"
+    // Embedding of the new face
+    private lateinit var embeddingToAdd: FloatArray
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -208,15 +210,28 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
     fun changeMode(view: View) {
         if (AddFaceMode) {
+            // Set the button's image to a '+' sign
             addFaceButton.setImageResource(android.R.drawable.ic_input_add)
+            // Set Prediction mode
             AddFaceMode = false
+            // Show the 'Make a shot' button
+            shotButton.visibility = View.INVISIBLE
         }
         else {
+            // Set the button's image to a 'x' sign
             addFaceButton.setImageResource(android.R.drawable.ic_delete)
+            // Set Face adding mode
+            AddFaceMode = true
+            // Hide the 'Make a shot' button
+            shotButton.visibility = View.VISIBLE
+            // Show a message
             Toast.makeText(this, "Take 5 shots with a person you'd like to add.",
                 Toast.LENGTH_LONG).show()
-            AddFaceMode = true
         }
+    }
+
+    fun makeShot(view: View) {
+        Log.d("JOPA", "Button is pressed")
     }
 
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
@@ -263,49 +278,51 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         val bm = Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
 
         if (AddFaceMode) {
-            // Bounding boxes color
-            val bboxColor = (255 shl 24) or 255
+            // Bounding box color
+            val blue = (255 shl 24) or 255
 
             // If there are faces, iterate through them and draw bboxes
             if (faces?.isNotEmpty()!!) {
-                for ((face, embedding) in faces zip Descriptors) {
-                    // Get coordinates relative to analyzer frame
-                    var left = if (frontCam) analyze_width - face.boundingBox.right
-                    else face.boundingBox.left
-                    var right = if (frontCam) analyze_width - face.boundingBox.left
-                    else face.boundingBox.right
-                    var bottom = face.boundingBox.bottom
-                    var top = face.boundingBox.top
+                val face = faces[0]
+                embeddingToAdd = Descriptors[0]
 
-                    // Cast to coordinates relative to preview frame
-                    left = (left * preview_width) / analyze_width as Int
-                    right = (right * preview_width) / analyze_width as Int
-                    top = (top * preview_height) / analyze_height as Int
-                    bottom = (bottom * preview_height) / analyze_height as Int
+                // Get coordinates relative to analyzer frame
+                var left = if (frontCam) analyze_width - face.boundingBox.right
+                else face.boundingBox.left
+                var right = if (frontCam) analyze_width - face.boundingBox.left
+                else face.boundingBox.right
+                var bottom = face.boundingBox.bottom
+                var top = face.boundingBox.top
 
-                    // Cast to coordinates relative to scaled window
-                    left -= offset_x
-                    right -= offset_x
-                    top -= offset_y
-                    bottom -= offset_y
+                // Cast to coordinates relative to preview frame
+                left = (left * preview_width) / analyze_width as Int
+                right = (right * preview_width) / analyze_width as Int
+                top = (top * preview_height) / analyze_height as Int
+                bottom = (bottom * preview_height) / analyze_height as Int
 
-                    // Draw a bbox around the face
-                    for (x in left..right) {
-                        if (x !in 0 until scaled_win_width) continue
-                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
-                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bboxColor)
-                    }
-                    for (y in top..bottom) {
-                        if (y !in 0 until scaled_win_height) continue
-                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, bboxColor)
-                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, bboxColor)
-                    }
+                // Cast to coordinates relative to scaled window
+                left -= offset_x
+                right -= offset_x
+                top -= offset_y
+                bottom -= offset_y
+
+                // Draw a bbox around the face
+                for (x in left..right) {
+                    if (x !in 0 until scaled_win_width) continue
+                    if (top in 0 until scaled_win_height) bm.setPixel(x, top, blue)
+                    if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, blue)
+                }
+                for (y in top..bottom) {
+                    if (y !in 0 until scaled_win_height) continue
+                    if (left in 0 until scaled_win_width) bm.setPixel(left, y, blue)
+                    if (right in 0 until scaled_win_width) bm.setPixel(right, y, blue)
                 }
             }
         }
         else {
-            // Bounding boxes color
-            val bboxColor = (255 shl 24) or (255 shl 8)
+            // Bounding boxes color for recognized and unrecognized faces
+            val green = (255 shl 24) or (255 shl 8)
+            val red = (255 shl 24) or (255 shl 16)
 
             // If there are faces, iterate through them and draw bboxes
             if (faces?.isNotEmpty()!!) {
@@ -333,13 +350,13 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                     // Draw a bbox around the face
                     for (x in left..right) {
                         if (x !in 0 until scaled_win_width) continue
-                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, bboxColor)
-                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bboxColor)
+                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, green)
+                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, green)
                     }
                     for (y in top..bottom) {
                         if (y !in 0 until scaled_win_height) continue
-                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, bboxColor)
-                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, bboxColor)
+                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, green)
+                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, green)
                     }
                 }
             }
