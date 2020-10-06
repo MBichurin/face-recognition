@@ -27,8 +27,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.File
-import java.io.FileOutputStream
+import java.io.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -37,15 +36,22 @@ var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 var frontCam = true
 
 class MainActivity : AppCompatActivity(), BBoxUpdater {
+    // App permissions
     private val permissions = arrayOf(android.Manifest.permission.CAMERA,
         android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
     companion object {
         private const val REQUEST_CODE = 228
     }
+    // Threadpool for cam
     private lateinit var cameraExecutor: ExecutorService
+    // Analyzer instance
     private lateinit var myAnalyzer: MyAnalyzer
+    // To store Preview's shape
     private var preview_width = -1
     private var preview_height = -1
+    // Map of saved identities and name of file it's stored in
+    private var SavedFaces = emptyMap<String, FloatArray>()
+    private val IdMap_file = "/saved_faces.ser"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,8 +72,10 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         myAnalyzer.setBBoxUpdaterListener(this)
         // Initialize interpreter for recognition
         myAnalyzer.initModel(assets)
-
+        // Initialize camera threadpool
         cameraExecutor = Executors.newSingleThreadExecutor()
+        // Read saved identities from file
+        readSavedFaces()
 
         if (permissionsDenied()) {
             requestPermissions()
@@ -95,6 +103,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        // Update the stored dictionary of IDs
+        writeSavedFaces()
     }
 
     private fun permissionsDenied(): Boolean {
@@ -106,6 +116,27 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
     private fun requestPermissions() {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE)
+    }
+
+    private fun readSavedFaces() {
+        val file = File(externalMediaDirs.firstOrNull()!!, IdMap_file)
+        if (file.exists()) {
+            val fileInStream = FileInputStream(file)
+            val objInStream = ObjectInputStream(fileInStream)
+            SavedFaces = objInStream.readObject() as Map<String, FloatArray>
+
+            objInStream.close()
+        }
+    }
+
+    private fun writeSavedFaces() {
+        val file = File(externalMediaDirs.firstOrNull()!!, IdMap_file)
+
+        val fileOutStream = FileOutputStream(file)
+        val objOutStream = ObjectOutputStream(fileOutStream)
+        objOutStream.writeObject(SavedFaces)
+
+        objOutStream.close()
     }
 
     private fun runCamera() {

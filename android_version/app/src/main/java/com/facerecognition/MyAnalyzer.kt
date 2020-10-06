@@ -41,8 +41,6 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     @SuppressLint("UnsafeExperimentalUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val t1 = System.currentTimeMillis()
-
         // Get rotation of the frame
         val rotation = when (imageProxy.imageInfo.rotationDegrees) {
             // Upside down
@@ -70,7 +68,6 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         // Pass the image to the detector
         detector.detectInImage(image)
             .addOnCompleteListener { faces ->
-                Log.d("JOPA", "t{Detection of ${faces.result?.size} face(s)} = ${System.currentTimeMillis() - t1}")
                 // Pass data to the listener
                 successfulDetection(faces.result, image.bitmap)
             }
@@ -112,16 +109,9 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                                   private val bitmap: Bitmap,
                                   private val modelFile: MappedByteBuffer): Runnable {
         override fun run() {
-            var t1 = System.currentTimeMillis()
-
             // Interpreter of facenet model
             val facenet = Interpreter(modelFile)
 
-            var t2 = System.currentTimeMillis()
-            Log.d("JOPA", "t{new Interpreter()} = ${t2 - t1}")
-            t1 = t2
-
-//            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             // Initialize Descriptors
             Desctiptors = Array(faces.size) { FloatArray(128) }
             // Image size
@@ -166,9 +156,6 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
             // Descriptor is free now
             detect_describe_isBusy.set(false)
-
-            t2 = System.currentTimeMillis()
-            Log.d("JOPA", "t{Description of ${faces.size} face(s)} = ${t2 - t1}")
         }
 
         private fun CropFace(frame_bm: Bitmap, face_bbox: Rect): Bitmap {
