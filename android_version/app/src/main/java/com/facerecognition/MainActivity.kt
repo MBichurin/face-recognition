@@ -1,31 +1,24 @@
 package com.facerecognition
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.Matrix
 import android.graphics.Rect
-import android.graphics.drawable.BitmapDrawable
-import android.media.Image
-import android.media.VolumeShaper
-import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.util.Size
-import android.view.Surface.ROTATION_0
 import android.view.View
-import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.appcompat.content.res.AppCompatResources
-import androidx.camera.core.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.*
@@ -45,6 +38,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
     companion object {
         private const val REQUEST_CODE = 228
+        // Maximum number of shots
+        private const val MAX_N_SHOTS = 5
     }
     // Threadpool for cam
     private lateinit var cameraExecutor: ExecutorService
@@ -54,10 +49,14 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     private var preview_width = -1
     private var preview_height = -1
     // Map of saved identities and name of file it's stored in
-    private var SavedFaces = emptyMap<String, FloatArray>()
+    private var SavedFaces = mutableMapOf<String, FloatArray>()
     private val IdMap_file = "/saved_faces.ser"
-    // Embedding of the new face
+    // Name and embedding of the new face and the last detected embedding
+    private lateinit var nameToAdd: String
     private lateinit var embeddingToAdd: FloatArray
+    private lateinit var lastEmbedding: FloatArray
+    // Number of made shots
+    private var n_shots = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,7 +128,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         if (file.exists()) {
             val fileInStream = FileInputStream(file)
             val objInStream = ObjectInputStream(fileInStream)
-            SavedFaces = objInStream.readObject() as Map<String, FloatArray>
+            SavedFaces = objInStream.readObject() as MutableMap<String, FloatArray>
 
             objInStream.close()
         }
@@ -214,24 +213,73 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             addFaceButton.setImageResource(android.R.drawable.ic_input_add)
             // Set Prediction mode
             AddFaceMode = false
-            // Show the 'Make a shot' button
+            // Hide 'Insert name' screen
+            insertNameTextbox.visibility = View.INVISIBLE
+            insertNameButton.visibility = View.INVISIBLE
+            plainWhiteView.visibility = View.INVISIBLE
+            // Hide the 'Make a shot' button
             shotButton.visibility = View.INVISIBLE
+            // Show switcher
+            camSwitcher.visibility = View.VISIBLE
         }
         else {
-            // Set the button's image to a 'x' sign
+            // Set the button's image to an 'x' sign
             addFaceButton.setImageResource(android.R.drawable.ic_delete)
             // Set Face adding mode
             AddFaceMode = true
-            // Hide the 'Make a shot' button
-            shotButton.visibility = View.VISIBLE
-            // Show a message
-            Toast.makeText(this, "Take 5 shots with a person you'd like to add.",
-                Toast.LENGTH_LONG).show()
+            // Set the number of made shots and embeddingToAdd to 0s
+            n_shots = 0
+            embeddingToAdd = FloatArray(128)
+            // Show 'Insert name' screen
+            insertNameTextbox.visibility = View.VISIBLE
+            insertNameButton.visibility = View.VISIBLE
+            plainWhiteView.visibility = View.VISIBLE
+            // Hide switcher
+            camSwitcher.visibility = View.INVISIBLE
         }
     }
 
+    fun rememberTheName(view: View) {
+        nameToAdd = insertNameTextbox.text.toString()
+        // Hide the keyboard
+        try {
+            val imm: InputMethodManager =
+                getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
+        }
+        catch (e: Exception) {}
+        // Show a message
+        Toast.makeText(this, "Take $MAX_N_SHOTS shots of a person you'd like to add",
+            Toast.LENGTH_LONG).show()
+        // Show the 'Make a shot' button
+        shotButton.visibility = View.VISIBLE
+        // Hide 'Insert name' screen
+        insertNameTextbox.visibility = View.INVISIBLE
+        insertNameButton.visibility = View.INVISIBLE
+        plainWhiteView.visibility = View.INVISIBLE
+        // Show switcher
+        camSwitcher.visibility = View.VISIBLE
+    }
+
     fun makeShot(view: View) {
-        Log.d("JOPA", "Button is pressed")
+        n_shots++
+        // Show a message
+        Toast.makeText(this, "$n_shots",
+            Toast.LENGTH_SHORT).show()
+        embeddingToAdd += lastEmbedding
+
+        if (n_shots == MAX_N_SHOTS) {
+            for (i in embeddingToAdd.indices) {
+                embeddingToAdd[i] = embeddingToAdd[i] / 5
+            }
+            // Add new embedding
+            SavedFaces[nameToAdd] = embeddingToAdd
+            // Show a message
+            Toast.makeText(this, "New identity's saved",
+                Toast.LENGTH_SHORT).show()
+            // Change mode to Recognition
+            changeMode(shotButton)
+        }
     }
 
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
@@ -284,7 +332,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             // If there are faces, iterate through them and draw bboxes
             if (faces?.isNotEmpty()!!) {
                 val face = faces[0]
-                embeddingToAdd = Descriptors[0]
+                lastEmbedding = Descriptors[0]
 
                 // Get coordinates relative to analyzer frame
                 var left = if (frontCam) analyze_width - face.boundingBox.right
