@@ -64,7 +64,13 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // Read saved identities from file
+        readSavedFaces()
+        
+        main()
+    }
 
+    private fun main() {
         // Update camera switcher
         if (frontCam.get()) {
             camSwitcher.text = getString(R.string.cam_switcher_text1)
@@ -82,8 +88,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         myAnalyzer.initModel(assets)
         // Initialize camera threadpool
         cameraExecutor = Executors.newSingleThreadExecutor()
-        // Read saved identities from file
-        readSavedFaces()
 
         if (permissionsDenied()) {
             requestPermissions()
@@ -204,10 +208,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
 
-        if (permissionsDenied())
-            requestPermissions()
-        else
-            runCamera()
+        cameraExecutor.shutdown()
+        main()
     }
 
     fun changeMode(view: View) {
