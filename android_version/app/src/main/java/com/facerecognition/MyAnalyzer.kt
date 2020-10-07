@@ -145,6 +145,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
             // Update bboxes
             listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
+
             // Descriptor is free now
             detect_describe_isBusy.set(false)
         }

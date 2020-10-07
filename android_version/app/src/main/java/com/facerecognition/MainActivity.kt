@@ -302,106 +302,61 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
                               analyze_width: Int, analyze_height: Int,
                               Descriptors: Array<FloatArray>) {
-        val rect = Rect()
-        window.decorView.getWindowVisibleDisplayFrame(rect)
-        val win_width = rect.right - rect.left
-        val win_height = rect.bottom - rect.top
-        val scaled_win_height: Int
-        val scaled_win_width: Int
-        val offset_x: Int
-        val offset_y: Int
+        runOnUiThread{
+            val rect = Rect()
+            window.decorView.getWindowVisibleDisplayFrame(rect)
+            val win_width = rect.right - rect.left
+            val win_height = rect.bottom - rect.top
+            val scaled_win_height: Int
+            val scaled_win_width: Int
+            val offset_x: Int
+            val offset_y: Int
 
-        val t2 = System.currentTimeMillis()
-        Log.d("JOPA", "${t2 - t1}")
-        t1 = t2
+            val t2 = System.currentTimeMillis()
+            Log.d("JOPA", "${t2 - t1}")
+            t1 = t2
 
-        // Set resolution
-        if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-            if (preview_width > preview_height) {
-                // Swap
-                preview_height += preview_width
-                preview_width = preview_height - preview_width
-                preview_height -= preview_width
-            }
-
-            scaled_win_height = preview_height
-            scaled_win_width = win_width * scaled_win_height / win_height
-            offset_x = (preview_width - scaled_win_width) / 2
-            offset_y = 0
-        }
-        else {
-            if (preview_width < preview_height) {
-                // Swap
-                preview_height += preview_width
-                preview_width = preview_height - preview_width
-                preview_height -= preview_width
-            }
-
-            scaled_win_width = preview_width
-            scaled_win_height = win_height * scaled_win_width / win_width
-            offset_y = (preview_height - scaled_win_height) / 2
-            offset_x = 0
-        }
-
-        // Create a bitmap
-        val bm = Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
-
-        if (AddFaceMode.get()) {
-            // Bounding box color
-            val blue = (255 shl 24) or 255
-
-            // If there are faces, iterate through them and draw bboxes
-            if (faces?.isNotEmpty()!! and Descriptors.isNotEmpty()) {
-                val face = faces[0]
-                // Remember the last embedding
-                lastEmbedding = Descriptors[0]
-
-                // Get coordinates relative to analyzer frame
-                var left = if (frontCam.get()) analyze_width - face.boundingBox.right
-                else face.boundingBox.left
-                var right = if (frontCam.get()) analyze_width - face.boundingBox.left
-                else face.boundingBox.right
-                var bottom = face.boundingBox.bottom
-                var top = face.boundingBox.top
-
-                // Cast to coordinates relative to preview frame
-                left = (left * preview_width) / analyze_width as Int
-                right = (right * preview_width) / analyze_width as Int
-                top = (top * preview_height) / analyze_height as Int
-                bottom = (bottom * preview_height) / analyze_height as Int
-
-                // Cast to coordinates relative to scaled window
-                left -= offset_x
-                right -= offset_x
-                top -= offset_y
-                bottom -= offset_y
-
-                // Draw a bbox around the face
-                for (x in left..right) {
-                    if (x !in 0 until scaled_win_width) continue
-                    if (top in 0 until scaled_win_height) bm.setPixel(x, top, blue)
-                    if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, blue)
+            // Set resolution
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                if (preview_width > preview_height) {
+                    // Swap
+                    preview_height += preview_width
+                    preview_width = preview_height - preview_width
+                    preview_height -= preview_width
                 }
-                for (y in top..bottom) {
-                    if (y !in 0 until scaled_win_height) continue
-                    if (left in 0 until scaled_win_width) bm.setPixel(left, y, blue)
-                    if (right in 0 until scaled_win_width) bm.setPixel(right, y, blue)
-                }
-            }
-            else {
-                // There's no faces on the frame
-                lastEmbedding = FloatArray(0)
-            }
-        }
-        else {
-            // Bounding boxes color for recognized and unrecognized faces
-            val green = (255 shl 24) or (255 shl 8)
-            val red = (255 shl 24) or (255 shl 16)
 
-            // If there are faces, iterate through them and draw bboxes
-            if (faces?.isNotEmpty()!!) {
-                Log.d("JOPA", "${faces.size}, ${Descriptors.size}")
-                for ((face, embedding) in faces zip Descriptors) {
+                scaled_win_height = preview_height
+                scaled_win_width = win_width * scaled_win_height / win_height
+                offset_x = (preview_width - scaled_win_width) / 2
+                offset_y = 0
+            } else {
+                if (preview_width < preview_height) {
+                    // Swap
+                    preview_height += preview_width
+                    preview_width = preview_height - preview_width
+                    preview_height -= preview_width
+                }
+
+                scaled_win_width = preview_width
+                scaled_win_height = win_height * scaled_win_width / win_width
+                offset_y = (preview_height - scaled_win_height) / 2
+                offset_x = 0
+            }
+
+            // Create a bitmap
+            val bm =
+                Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
+
+            if (AddFaceMode.get()) {
+                // Bounding box color
+                val blue = (255 shl 24) or 255
+
+                // If there are faces, iterate through them and draw bboxes
+                if (faces?.isNotEmpty()!! and Descriptors.isNotEmpty()) {
+                    val face = faces[0]
+                    // Remember the last embedding
+                    lastEmbedding = Descriptors[0]
+
                     // Get coordinates relative to analyzer frame
                     var left = if (frontCam.get()) analyze_width - face.boundingBox.right
                     else face.boundingBox.left
@@ -425,20 +380,65 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                     // Draw a bbox around the face
                     for (x in left..right) {
                         if (x !in 0 until scaled_win_width) continue
-                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, green)
-                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, green)
+                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, blue)
+                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, blue)
                     }
                     for (y in top..bottom) {
                         if (y !in 0 until scaled_win_height) continue
-                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, green)
-                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, green)
+                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, blue)
+                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, blue)
+                    }
+                } else {
+                    // There's no faces on the frame
+                    lastEmbedding = FloatArray(0)
+                }
+            } else {
+                // Bounding boxes color for recognized and unrecognized faces
+                val green = (255 shl 24) or (255 shl 8)
+                val red = (255 shl 24) or (255 shl 16)
+
+                // If there are faces, iterate through them and draw bboxes
+                if (faces?.isNotEmpty()!!) {
+                    Log.d("JOPA", "${faces.size}, ${Descriptors.size}")
+                    for ((face, embedding) in faces zip Descriptors) {
+                        // Get coordinates relative to analyzer frame
+                        var left = if (frontCam.get()) analyze_width - face.boundingBox.right
+                        else face.boundingBox.left
+                        var right = if (frontCam.get()) analyze_width - face.boundingBox.left
+                        else face.boundingBox.right
+                        var bottom = face.boundingBox.bottom
+                        var top = face.boundingBox.top
+
+                        // Cast to coordinates relative to preview frame
+                        left = (left * preview_width) / analyze_width as Int
+                        right = (right * preview_width) / analyze_width as Int
+                        top = (top * preview_height) / analyze_height as Int
+                        bottom = (bottom * preview_height) / analyze_height as Int
+
+                        // Cast to coordinates relative to scaled window
+                        left -= offset_x
+                        right -= offset_x
+                        top -= offset_y
+                        bottom -= offset_y
+
+                        // Draw a bbox around the face
+                        for (x in left..right) {
+                            if (x !in 0 until scaled_win_width) continue
+                            if (top in 0 until scaled_win_height) bm.setPixel(x, top, green)
+                            if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, green)
+                        }
+                        for (y in top..bottom) {
+                            if (y !in 0 until scaled_win_height) continue
+                            if (left in 0 until scaled_win_width) bm.setPixel(left, y, green)
+                            if (right in 0 until scaled_win_width) bm.setPixel(right, y, green)
+                        }
                     }
                 }
             }
-        }
 
-        // Display bounding boxes
-        bboxesView.setImageBitmap(bm)
+            // Display bounding boxes
+            bboxesView.setImageBitmap(bm)
+        }
     }
 }
 
