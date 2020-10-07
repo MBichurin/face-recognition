@@ -24,13 +24,16 @@ import kotlinx.android.synthetic.main.activity_main.*
 import java.io.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 // Initialize a CameraSelector
 var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 // To check whether it's front or rear cam turned on
-var frontCam = true
+var frontCam = AtomicBoolean(true)
 // Application mode (Recognition or Face adding)
-var AddFaceMode = false
+var AddFaceMode = AtomicBoolean(false)
+
+var t1 = System.currentTimeMillis()
 
 class MainActivity : AppCompatActivity(), BBoxUpdater {
     // App permissions
@@ -54,7 +57,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     // Name and embedding of the new face and the last detected embedding
     private lateinit var nameToAdd: String
     private lateinit var embeddingToAdd: FloatArray
-    private lateinit var lastEmbedding: FloatArray
+    private var lastEmbedding = FloatArray(0)
     // Number of made shots
     private var n_shots = 0
 
@@ -63,7 +66,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         setContentView(R.layout.activity_main)
 
         // Update camera switcher
-        if (frontCam) {
+        if (frontCam.get()) {
             camSwitcher.text = getString(R.string.cam_switcher_text1)
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
@@ -190,13 +193,13 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     fun switchCam(view: View) {
-        if (frontCam) {
-            frontCam = false
+        if (frontCam.get()) {
+            frontCam.set(false)
             camSwitcher.text = getString(R.string.cam_switcher_text2)
             cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
         }
         else {
-            frontCam = true
+            frontCam.set(true)
             camSwitcher.text = getString(R.string.cam_switcher_text1)
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
@@ -208,11 +211,14 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     fun changeMode(view: View) {
-        if (AddFaceMode) {
+        if (AddFaceMode.get()) {
+            // Show a message
+            Toast.makeText(this, "Canceled",
+                Toast.LENGTH_SHORT).show()
             // Set the button's image to a '+' sign
             addFaceButton.setImageResource(android.R.drawable.ic_input_add)
             // Set Prediction mode
-            AddFaceMode = false
+            AddFaceMode.set(false)
             // Hide 'Insert name' screen
             insertNameTextbox.visibility = View.INVISIBLE
             insertNameButton.visibility = View.INVISIBLE
@@ -226,7 +232,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             // Set the button's image to an 'x' sign
             addFaceButton.setImageResource(android.R.drawable.ic_delete)
             // Set Face adding mode
-            AddFaceMode = true
+            AddFaceMode.set(true)
             // Set the number of made shots and embeddingToAdd to 0s
             n_shots = 0
             embeddingToAdd = FloatArray(128)
@@ -262,23 +268,34 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     fun makeShot(view: View) {
-        n_shots++
-        // Show a message
-        Toast.makeText(this, "$n_shots",
-            Toast.LENGTH_SHORT).show()
-        embeddingToAdd += lastEmbedding
-
-        if (n_shots == MAX_N_SHOTS) {
-            for (i in embeddingToAdd.indices) {
-                embeddingToAdd[i] = embeddingToAdd[i] / 5
-            }
-            // Add new embedding
-            SavedFaces[nameToAdd] = embeddingToAdd
+        if (lastEmbedding.isEmpty()) {
             // Show a message
-            Toast.makeText(this, "New identity's saved",
-                Toast.LENGTH_SHORT).show()
-            // Change mode to Recognition
-            changeMode(shotButton)
+            Toast.makeText(this, "No faces found. Try again",
+                Toast.LENGTH_LONG).show()
+        }
+        else {
+            n_shots++
+            // Show a message
+            Toast.makeText(
+                this, "$n_shots",
+                Toast.LENGTH_SHORT
+            ).show()
+            embeddingToAdd += lastEmbedding
+
+            if (n_shots == MAX_N_SHOTS) {
+                for (i in embeddingToAdd.indices) {
+                    embeddingToAdd[i] = embeddingToAdd[i] / 5
+                }
+                // Add new embedding
+                SavedFaces[nameToAdd] = embeddingToAdd
+                // Show a message
+                Toast.makeText(
+                    this, "New identity's saved",
+                    Toast.LENGTH_SHORT
+                ).show()
+                // Change mode to Recognition
+                changeMode(shotButton)
+            }
         }
     }
 
@@ -293,6 +310,10 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         val scaled_win_width: Int
         val offset_x: Int
         val offset_y: Int
+
+        val t2 = System.currentTimeMillis()
+        Log.d("JOPA", "${t2 - t1}")
+        t1 = t2
 
         // Set resolution
         if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -325,19 +346,20 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         // Create a bitmap
         val bm = Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
 
-        if (AddFaceMode) {
+        if (AddFaceMode.get()) {
             // Bounding box color
             val blue = (255 shl 24) or 255
 
             // If there are faces, iterate through them and draw bboxes
-            if (faces?.isNotEmpty()!!) {
+            if (faces?.isNotEmpty()!! and Descriptors.isNotEmpty()) {
                 val face = faces[0]
+                // Remember the last embedding
                 lastEmbedding = Descriptors[0]
 
                 // Get coordinates relative to analyzer frame
-                var left = if (frontCam) analyze_width - face.boundingBox.right
+                var left = if (frontCam.get()) analyze_width - face.boundingBox.right
                 else face.boundingBox.left
-                var right = if (frontCam) analyze_width - face.boundingBox.left
+                var right = if (frontCam.get()) analyze_width - face.boundingBox.left
                 else face.boundingBox.right
                 var bottom = face.boundingBox.bottom
                 var top = face.boundingBox.top
@@ -366,6 +388,10 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                     if (right in 0 until scaled_win_width) bm.setPixel(right, y, blue)
                 }
             }
+            else {
+                // There's no faces on the frame
+                lastEmbedding = FloatArray(0)
+            }
         }
         else {
             // Bounding boxes color for recognized and unrecognized faces
@@ -374,11 +400,12 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
             // If there are faces, iterate through them and draw bboxes
             if (faces?.isNotEmpty()!!) {
+                Log.d("JOPA", "${faces.size}, ${Descriptors.size}")
                 for ((face, embedding) in faces zip Descriptors) {
                     // Get coordinates relative to analyzer frame
-                    var left = if (frontCam) analyze_width - face.boundingBox.right
+                    var left = if (frontCam.get()) analyze_width - face.boundingBox.right
                     else face.boundingBox.left
-                    var right = if (frontCam) analyze_width - face.boundingBox.left
+                    var right = if (frontCam.get()) analyze_width - face.boundingBox.left
                     else face.boundingBox.right
                     var bottom = face.boundingBox.bottom
                     var top = face.boundingBox.top

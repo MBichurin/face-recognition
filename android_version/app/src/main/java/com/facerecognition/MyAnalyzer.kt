@@ -84,15 +84,16 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     private fun successfulDetection(faces: List<FirebaseVisionFace>?, bitmap: Bitmap) {
         if (faces?.isNotEmpty()!!) {
-            val recognition = Recognition(faces, bitmap, modelFile)
+            val recognition = Recognition(faces, bitmap, modelFile, listener)
             Thread(recognition).start()
         }
         else {
+            Desctiptors = Array(0) { FloatArray(128) }
             // Descriptor is free now
             detect_describe_isBusy.set(false)
+            // Update bboxes
+            listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
         }
-
-        listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
     }
 
     fun initModel(assetManager: AssetManager) {
@@ -107,7 +108,8 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
 
     class Recognition constructor(private val faces: List<FirebaseVisionFace>,
                                   private val bitmap: Bitmap,
-                                  private val modelFile: MappedByteBuffer): Runnable {
+                                  private val modelFile: MappedByteBuffer,
+                                  private var listener: BBoxUpdater): Runnable {
         // Image size
         private val img_size = 160
 
@@ -115,7 +117,7 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
             // Interpreter of facenet model
             val facenet = Interpreter(modelFile)
 
-            if (AddFaceMode) {
+            if (AddFaceMode.get()) {
                 // Initialize Descriptors
                 Desctiptors = Array(1) { FloatArray(128) }
 
@@ -141,6 +143,8 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 }
             }
 
+            // Update bboxes
+            listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
             // Descriptor is free now
             detect_describe_isBusy.set(false)
         }
