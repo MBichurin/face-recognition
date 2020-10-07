@@ -89,3 +89,8 @@ Monday 05.10.20
 Tuesday 06.10.20
 	https://www.youtube.com/watch?v=0Z5MZ0jL2BM
 	https://stackoverflow.com/questions/14212745/how-to-read-write-data-dictionary-in-android-programmatically
+Wednesday 07.10.20
+	https://stackoverflow.com/questions/5161951/android-only-the-original-thread-that-created-a-view-hierarchy-can-touch-its-vi
+	https://stackoverflow.com/questions/33979132/cannot-resolve-method-runonuithread
+	https://stackoverflow.com/questions/43617361/runonuithread-is-not-calling
+	https://stackoverflow.com/questions/7150014/how-to-restart-the-oncreate-function/7150118#7150118
