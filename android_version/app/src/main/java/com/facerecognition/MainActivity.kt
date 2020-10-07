@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Bundle
+import android.text.Editable
 import android.util.Log
 import android.util.Size
 import android.view.View
@@ -25,6 +26,7 @@ import java.io.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.pow
 
 // Initialize a CameraSelector
 var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
@@ -32,8 +34,6 @@ var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 var frontCam = AtomicBoolean(true)
 // Application mode (Recognition or Face adding)
 var AddFaceMode = AtomicBoolean(false)
-
-var t1 = System.currentTimeMillis()
 
 class MainActivity : AppCompatActivity(), BBoxUpdater {
     // App permissions
@@ -206,9 +206,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
     fun changeMode(view: View) {
         if (AddFaceMode.get()) {
-            // Show a message
-            Toast.makeText(this, "Canceled",
-                Toast.LENGTH_SHORT).show()
             // Set the button's image to a '+' sign
             addFaceButton.setImageResource(android.R.drawable.ic_input_add)
             // Set Prediction mode
@@ -240,7 +237,9 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     fun rememberTheName(view: View) {
+        // Save the input and clear it
         nameToAdd = insertNameTextbox.text.toString()
+        insertNameTextbox.text.clear()
         // Hide the keyboard
         try {
             val imm: InputMethodManager =
@@ -293,6 +292,26 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         }
     }
 
+    fun L2_sq(A: FloatArray, B: FloatArray): Float {
+        return A.zip(B) {a, b -> (a - b).pow(2)}.sum()
+    }
+
+    fun recognize(new_vec: FloatArray): String {
+        var min_dist = -1.0f
+        var closest_name = "???"
+        val threshold = 1.242f
+
+        for ((saved_name, saved_vec) in SavedFaces) {
+            val loc_dist = L2_sq(new_vec, saved_vec)
+            if (((min_dist == -1.0f) || (min_dist > loc_dist)) && loc_dist <= threshold) {
+                min_dist = loc_dist
+                closest_name = saved_name
+            }
+        }
+
+        return closest_name
+    }
+
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
                               analyze_width: Int, analyze_height: Int,
                               Descriptors: Array<FloatArray>) {
@@ -305,10 +324,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             val scaled_win_width: Int
             val offset_x: Int
             val offset_y: Int
-
-            val t2 = System.currentTimeMillis()
-            Log.d("JOPA", "${t2 - t1}")
-            t1 = t2
 
             // Set resolution
             if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -396,8 +411,10 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
                 // If there are faces, iterate through them and draw bboxes
                 if (faces?.isNotEmpty()!!) {
-                    Log.d("JOPA", "${faces.size}, ${Descriptors.size}")
                     for ((face, embedding) in faces zip Descriptors) {
+                        val face_name = recognize(embedding)
+                        Log.d("JOPA", "It's $face_name")
+
                         // Get coordinates relative to analyzer frame
                         var left = if (frontCam.get()) analyze_width - face.boundingBox.right
                         else face.boundingBox.left
