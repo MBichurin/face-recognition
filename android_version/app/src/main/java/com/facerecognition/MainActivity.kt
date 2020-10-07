@@ -64,13 +64,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        // Read saved identities from file
-        readSavedFaces()
-        
-        main()
-    }
 
-    private fun main() {
         // Update camera switcher
         if (frontCam.get()) {
             camSwitcher.text = getString(R.string.cam_switcher_text1)
@@ -88,13 +82,11 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         myAnalyzer.initModel(assets)
         // Initialize camera threadpool
         cameraExecutor = Executors.newSingleThreadExecutor()
+        // Read saved identities from file
+        readSavedFaces()
 
-        if (permissionsDenied()) {
-            requestPermissions()
-        }
-        else {
-            runCamera()
-        }
+        if (permissionsDenied()) requestPermissions()
+        else runCamera()
     }
 
     override fun onRequestPermissionsResult
@@ -208,8 +200,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
 
-        cameraExecutor.shutdown()
-        main()
+        if (permissionsDenied()) requestPermissions()
+        else runCamera()
     }
 
     fun changeMode(view: View) {
@@ -349,6 +341,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             val bm =
                 Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
 
+            // Face adding mode
             if (AddFaceMode.get()) {
                 // Bounding box color
                 val blue = (255 shl 24) or 255
@@ -394,7 +387,9 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                     // There's no faces on the frame
                     lastEmbedding = FloatArray(0)
                 }
-            } else {
+            }
+            // Recognition mode
+            else {
                 // Bounding boxes color for recognized and unrecognized faces
                 val green = (255 shl 24) or (255 shl 8)
                 val red = (255 shl 24) or (255 shl 16)
