@@ -5,24 +5,27 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Rect
 import android.os.Bundle
-import android.text.Editable
 import android.util.Log
 import android.util.Size
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.*
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -60,6 +63,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     private var lastEmbedding = FloatArray(0)
     // Number of made shots
     private var n_shots = 0
+    // To store the displayed names
+    private val DisplayedNames: Queue<TextView> = LinkedList<TextView>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,6 +128,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     private fun readSavedFaces() {
+        Log.d("JOPA", "SavedFaces were read")
         val file = File(externalMediaDirs.firstOrNull()!!, IdMap_file)
         if (file.exists()) {
             val fileInStream = FileInputStream(file)
@@ -134,6 +140,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     private fun writeSavedFaces() {
+        Log.d("JOPA", "SavedFaces were written")
         val file = File(externalMediaDirs.firstOrNull()!!, IdMap_file)
 
         val fileOutStream = FileOutputStream(file)
@@ -283,6 +290,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
                 // Add new embedding
                 SavedFaces[nameToAdd] = embeddingToAdd
+                // Save the map
+                writeSavedFaces()
                 // Show a message
                 Toast.makeText(
                     this, "New identity's saved",
@@ -301,7 +310,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     fun recognize(new_vec: FloatArray): String {
         var min_dist = -1.0f
         var closest_name = "???"
-        val threshold = 1.242f
+//        val threshold = 1.242f
+        val threshold = 100
 
         for ((saved_name, saved_vec) in SavedFaces) {
             val loc_dist = L2_sq(new_vec, saved_vec)
@@ -313,6 +323,29 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         }
 
         return closest_name
+    }
+
+    private fun eraseDisplayedNames() {
+        while (DisplayedNames.isNotEmpty())
+            myConstraintLayout.removeView(DisplayedNames.remove())
+    }
+
+    private fun displayText(name: String, x: Int, y: Int, bg_clr: String) {
+        // Set text, background color and coordinates
+        val textView = TextView(this)
+        textView.text = name
+        textView.setBackgroundColor(Color.parseColor(bg_clr))
+        textView.x = x.toFloat()
+        textView.y = y.toFloat()
+
+        // Remember the TextView
+        DisplayedNames.add(textView)
+
+        val params = ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.WRAP_CONTENT,
+            ConstraintLayout.LayoutParams.WRAP_CONTENT)
+
+        myConstraintLayout.addView(textView, params)
     }
 
     override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
@@ -358,6 +391,9 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             // Create a bitmap
             val bm =
                 Bitmap.createBitmap(scaled_win_width, scaled_win_height, Bitmap.Config.ARGB_8888)
+
+            // Erase the names that were displayed before
+            eraseDisplayedNames()
 
             // Face adding mode
             if (AddFaceMode.get()) {
@@ -409,14 +445,21 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             // Recognition mode
             else {
                 // Bounding boxes color for recognized and unrecognized faces
-                val green = (255 shl 24) or (255 shl 8)
-                val red = (255 shl 24) or (255 shl 16)
+                val green_u8 = (255 shl 24) or (255 shl 8)
+                val green_hex = "#8c00ff00"
+                val red_u8 = (255 shl 24) or (255 shl 16)
+                val red_hex = "#8cff0000"
 
                 // If there are faces, iterate through them and draw bboxes
                 if (faces?.isNotEmpty()!!) {
                     for ((face, embedding) in faces zip Descriptors) {
+                        // Recognize the face
                         val face_name = recognize(embedding)
                         Log.d("JOPA", "It's $face_name")
+
+                        // Set colors depending on if the face was recognized
+                        val bbox_clr = if (face_name == "???") red_u8 else green_u8
+                        val text_bg_clr = if (face_name == "???") red_hex else green_hex
 
                         // Get coordinates relative to analyzer frame
                         var left = if (frontCam.get()) analyze_width - face.boundingBox.right
@@ -441,14 +484,21 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                         // Draw a bbox around the face
                         for (x in left..right) {
                             if (x !in 0 until scaled_win_width) continue
-                            if (top in 0 until scaled_win_height) bm.setPixel(x, top, green)
-                            if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, green)
+                            if (top in 0 until scaled_win_height) bm.setPixel(x, top, bbox_clr)
+                            if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bbox_clr)
                         }
                         for (y in top..bottom) {
                             if (y !in 0 until scaled_win_height) continue
-                            if (left in 0 until scaled_win_width) bm.setPixel(left, y, green)
-                            if (right in 0 until scaled_win_width) bm.setPixel(right, y, green)
+                            if (left in 0 until scaled_win_width) bm.setPixel(left, y, bbox_clr)
+                            if (right in 0 until scaled_win_width) bm.setPixel(right, y, bbox_clr)
                         }
+
+                        // Cast to coordinates relative to original window
+                        left = left * win_width / scaled_win_width
+                        top = top * win_height / scaled_win_height
+
+                        // Display the name
+                        displayText(face_name, left, top, text_bg_clr)
                     }
                 }
             }
