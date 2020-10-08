@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     private var SavedFaces = mutableMapOf<String, FloatArray>()
     private val IdMap_file = "/saved_faces.ser"
     // Name and embedding of the new face and the last detected embedding
-    private lateinit var nameToAdd: String
+    private var nameToAdd = "???"
     private lateinit var embeddingToAdd: FloatArray
     private var lastEmbedding = FloatArray(0)
     // Number of made shots
@@ -225,6 +225,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             shotButton.visibility = View.INVISIBLE
             // Show switcher
             camSwitcher.visibility = View.VISIBLE
+            // Forget the entered name
+            nameToAdd = "???"
         }
         else {
             // Set the button's image to an 'x' sign
@@ -238,8 +240,9 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             insertNameTextbox.visibility = View.VISIBLE
             insertNameButton.visibility = View.VISIBLE
             plainWhiteView.visibility = View.VISIBLE
-            // Hide switcher
+            // Hide switcher and displayed names
             camSwitcher.visibility = View.INVISIBLE
+            eraseDisplayedNames()
         }
     }
 
@@ -397,8 +400,9 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
             // Face adding mode
             if (AddFaceMode.get()) {
-                // Bounding box color
-                val blue = (255 shl 24) or 255
+                // Bounding box and text's background colors
+                val bbox_clr = (255 shl 24) or 255
+                val text_bg_clr = "#8c0000ff"
 
                 // If there are faces, iterate through them and draw bboxes
                 if (faces?.isNotEmpty()!! and Descriptors.isNotEmpty()) {
@@ -429,14 +433,22 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                     // Draw a bbox around the face
                     for (x in left..right) {
                         if (x !in 0 until scaled_win_width) continue
-                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, blue)
-                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, blue)
+                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, bbox_clr)
+                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bbox_clr)
                     }
                     for (y in top..bottom) {
                         if (y !in 0 until scaled_win_height) continue
-                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, blue)
-                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, blue)
+                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, bbox_clr)
+                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, bbox_clr)
                     }
+
+                    // Cast to coordinates relative to original window
+                    left = left * win_width / scaled_win_width
+                    top = top * win_height / scaled_win_height
+
+                    // Display the name if it's known
+                    if (nameToAdd != "???")
+                        displayText("$nameToAdd?", left, top, text_bg_clr)
                 } else {
                     // There's no faces on the frame
                     lastEmbedding = FloatArray(0)
@@ -444,7 +456,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             }
             // Recognition mode
             else {
-                // Bounding boxes color for recognized and unrecognized faces
+                // Colors for recognized and unrecognized faces
                 val green_u8 = (255 shl 24) or (255 shl 8)
                 val green_hex = "#8c00ff00"
                 val red_u8 = (255 shl 24) or (255 shl 16)
