@@ -94,3 +94,6 @@ Wednesday 07.10.20
 	https://stackoverflow.com/questions/33979132/cannot-resolve-method-runonuithread
 	https://stackoverflow.com/questions/43617361/runonuithread-is-not-calling
 	https://stackoverflow.com/questions/7150014/how-to-restart-the-oncreate-function/7150118#7150118
+Thursday 08.10.20
+	https://stackoverflow.com/questions/3294590/set-the-absolute-position-of-a-view
+	https://stackoverflow.com/questions/23517879/set-background-color-programmatically
