@@ -24,7 +24,7 @@ import java.nio.MappedByteBuffer
 private var Desctiptors = Array(0) { FloatArray(128) }
 
 // To not detect faces on every frame, just one at once
-private var detect_describe_isBusy = AtomicBoolean(false)
+var detect_describe_isBusy = AtomicBoolean(false)
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater

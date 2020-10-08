@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
 import android.util.Size
@@ -22,6 +23,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.*
@@ -37,6 +39,8 @@ var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 var frontCam = AtomicBoolean(true)
 // Application mode (Recognition or Face adding)
 var AddFaceMode = AtomicBoolean(false)
+// Skip the next frame
+var skipNextFrame = AtomicBoolean(false)
 
 class MainActivity : AppCompatActivity(), BBoxUpdater {
     // App permissions
@@ -207,6 +211,16 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
 
+        // Clear bounding boxes and displayed names
+        val bitmap_drawable = bboxesView.drawable as BitmapDrawable
+        var bitmap = bitmap_drawable.bitmap
+        bitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
+        bboxesView.setImageBitmap(bitmap)
+        eraseDisplayedNames()
+
+        // Skip the visualisation for the current frame
+        skipNextFrame.set(true)
+
         if (permissionsDenied()) requestPermissions()
         else runCamera()
     }
@@ -364,6 +378,11 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                               analyze_width: Int, analyze_height: Int,
                               Descriptors: Array<FloatArray>) {
         runOnUiThread{
+            if (skipNextFrame.get()) {
+                skipNextFrame.set(false)
+                return@runOnUiThread
+            }
+
             val rect = Rect()
             window.decorView.getWindowVisibleDisplayFrame(rect)
             val win_width = rect.right - rect.left
