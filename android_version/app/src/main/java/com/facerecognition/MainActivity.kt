@@ -273,12 +273,14 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                 this, "$n_shots",
                 Toast.LENGTH_SHORT
             ).show()
-            embeddingToAdd += lastEmbedding
+
+            embeddingToAdd = embeddingToAdd.zip(lastEmbedding) {a, b -> a + b}.toFloatArray()
 
             if (n_shots == MAX_N_SHOTS) {
                 for (i in embeddingToAdd.indices) {
                     embeddingToAdd[i] = embeddingToAdd[i] / 5
                 }
+
                 // Add new embedding
                 SavedFaces[nameToAdd] = embeddingToAdd
                 // Show a message
@@ -303,6 +305,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
         for ((saved_name, saved_vec) in SavedFaces) {
             val loc_dist = L2_sq(new_vec, saved_vec)
+            Log.d("JOPA", "$saved_name $loc_dist")
             if (((min_dist == -1.0f) || (min_dist > loc_dist)) && loc_dist <= threshold) {
                 min_dist = loc_dist
                 closest_name = saved_name
