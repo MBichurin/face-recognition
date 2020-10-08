@@ -247,27 +247,36 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     }
 
     fun rememberTheName(view: View) {
-        // Save the input and clear it
-        nameToAdd = insertNameTextbox.text.toString()
-        insertNameTextbox.text.clear()
-        // Hide the keyboard
-        try {
-            val imm: InputMethodManager =
-                getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
+        if (insertNameTextbox.text.toString() == "") {
+            // Show a message
+            Toast.makeText(
+                this, "Names couldn't be empty",
+                Toast.LENGTH_LONG).show()
         }
-        catch (e: Exception) {}
-        // Show a message
-        Toast.makeText(this, "Take $MAX_N_SHOTS shots of a person you'd like to add",
-            Toast.LENGTH_LONG).show()
-        // Show the 'Make a shot' button
-        shotButton.visibility = View.VISIBLE
-        // Hide 'Insert name' screen
-        insertNameTextbox.visibility = View.INVISIBLE
-        insertNameButton.visibility = View.INVISIBLE
-        plainWhiteView.visibility = View.INVISIBLE
-        // Show switcher
-        camSwitcher.visibility = View.VISIBLE
+        else {
+            // Save the input and clear it
+            nameToAdd = insertNameTextbox.text.toString()
+            insertNameTextbox.text.clear()
+            // Hide the keyboard
+            try {
+                val imm: InputMethodManager =
+                    getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
+            } catch (e: Exception) {
+            }
+            // Show a message
+            Toast.makeText(
+                this, "Take $MAX_N_SHOTS shots of a person you'd like to add",
+                Toast.LENGTH_LONG).show()
+            // Show the 'Make a shot' button
+            shotButton.visibility = View.VISIBLE
+            // Hide 'Insert name' screen
+            insertNameTextbox.visibility = View.INVISIBLE
+            insertNameButton.visibility = View.INVISIBLE
+            plainWhiteView.visibility = View.INVISIBLE
+            // Show switcher
+            camSwitcher.visibility = View.VISIBLE
+        }
     }
 
     fun makeShot(view: View) {
