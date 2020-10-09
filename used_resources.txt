@@ -97,3 +97,5 @@ Wednesday 07.10.20
 Thursday 08.10.20
 	https://stackoverflow.com/questions/3294590/set-the-absolute-position-of-a-view
 	https://stackoverflow.com/questions/23517879/set-background-color-programmatically
+Friday 09.10.20
+	https://stackoverflow.com/questions/11278507/android-widget-switch-on-off-event-listener
