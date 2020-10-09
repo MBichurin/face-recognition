@@ -13,6 +13,7 @@ import android.util.Log
 import android.util.Size
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.CompoundButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,7 +24,6 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.*
@@ -69,6 +69,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     private var n_shots = 0
     // To store the displayed names
     private val DisplayedNames: Queue<TextView> = LinkedList<TextView>()
+    // The shape of bboxView is already known
+    private var bboxView_shape_is_known = AtomicBoolean(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +95,11 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         cameraExecutor = Executors.newSingleThreadExecutor()
         // Read saved identities from file
         readSavedFaces()
+
+        // For switcher sliding
+        camSwitcher.setOnCheckedChangeListener { view, _ ->
+            switchCam(view)
+        }
 
         if (permissionsDenied()) requestPermissions()
         else runCamera()
@@ -133,7 +140,15 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
     private fun readSavedFaces() {
         Log.d("JOPA", "SavedFaces were read")
-        val file = File(externalMediaDirs.firstOrNull()!!, IdMap_file)
+        lateinit var file: File
+        try {
+            file = File(externalMediaDirs.firstOrNull()!!, IdMap_file)
+        }
+        catch(exc: Exception) {
+            writeSavedFaces()
+            return
+        }
+
         if (file.exists()) {
             val fileInStream = FileInputStream(file)
             val objInStream = ObjectInputStream(fileInStream)
@@ -211,11 +226,20 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
 
-        // Clear bounding boxes and displayed names
-        val bitmap_drawable = bboxesView.drawable as BitmapDrawable
-        var bitmap = bitmap_drawable.bitmap
-        bitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
-        bboxesView.setImageBitmap(bitmap)
+        // If bitmap isn't empty
+        if (bboxView_shape_is_known.get()) {
+            // Clear bounding boxes
+            val bitmap_drawable = bboxesView.drawable as BitmapDrawable
+            var bitmap = bitmap_drawable.bitmap
+
+            bitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
+            bboxesView.setImageBitmap(bitmap)
+        }
+        else {
+            val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+            bboxesView.setImageBitmap(bitmap)
+        }
+        // Clear displayed names
         eraseDisplayedNames()
 
         // Skip the visualisation for the current frame
@@ -545,6 +569,7 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
             // Display bounding boxes
             bboxesView.setImageBitmap(bm)
+            bboxView_shape_is_known.set(true)
         }
     }
 }
