@@ -2,6 +2,7 @@
 androidTest/
 test/
 tf_examples/
+docs/
 *.xml
 *.dat
 *.avi
