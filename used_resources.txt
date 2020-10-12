@@ -68,7 +68,7 @@ Monday 28.09.20
 Tuesday 29.09.20
 	https://developer.android.com/training/appbar/setting-up
 	https://stackoverflow.com/questions/3407256/height-of-status-bar-in-android
-Wednesdat 30.09.20
+Wednesday 30.09.20
 	-
 Thursday 01.10.20
 	https://stackoverflow.com/questions/57908177/get-camerax-final-resolution
