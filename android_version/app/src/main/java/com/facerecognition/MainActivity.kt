@@ -13,7 +13,6 @@ import android.util.Log
 import android.util.Size
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.widget.CompoundButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -71,6 +70,13 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
     private val DisplayedNames: Queue<TextView> = LinkedList<TextView>()
     // The shape of bboxView is already known
     private var bboxView_shape_is_known = AtomicBoolean(false)
+    // To match top left angles of bboxes in the descriptor and the current ones
+    private var BBoxesMatches =
+        mutableMapOf<Rect, Rect?>()
+    // To store names of bboxes
+    private var NameOfBBox = mutableMapOf<Rect, String>()
+    // Max distance of bboxes coords to be similar
+    private var bboxesSimilarityDist = 400
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -365,7 +371,6 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 
         for ((saved_name, saved_vec) in SavedFaces) {
             val loc_dist = L2_sq(new_vec, saved_vec)
-            Log.d("JOPA", "$saved_name $loc_dist")
             if (((min_dist == -1.0f) || (min_dist > loc_dist)) && loc_dist <= threshold) {
                 min_dist = loc_dist
                 closest_name = saved_name
@@ -398,9 +403,138 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
         myConstraintLayout.addView(textView, params)
     }
 
-    override fun updateBBoxes(faces: List<FirebaseVisionFace>?,
-                              analyze_width: Int, analyze_height: Int,
-                              Descriptors: Array<FloatArray>) {
+    private fun sqr_distance(x1: Int, y1: Int, x2: Int, y2: Int): Int {
+        return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)
+    }
+
+    override fun afterDetection(faces: List<FirebaseVisionFace>?,
+                                analyze_width: Int, analyze_height: Int,
+                                descriptorWasBusy: Boolean) {
+        Log.d("JOPA", "was descriptor busy? $descriptorWasBusy")
+        val BBoxes: Array<Rect?> = Array(faces?.size!!) {null}
+        val Names = Array(faces.size) {"..."}
+
+        // Save bboxes of faces
+        for ((i_face, face) in faces.withIndex()) {
+            BBoxes[i_face] = face.boundingBox
+        }
+
+        if (descriptorWasBusy) {
+            // Match top left angles of bboxes in the descriptor and current bboxes
+            for ((key, value) in BBoxesMatches) {
+                val saved_left = key.left
+                val saved_top = key.top
+                val last_left = value?.left
+                val last_top = value?.top
+
+                var new_ind: Int? = null
+                var min_dist = -1
+                // Find the closest bbox among the currently detected
+                for ((i_face, bbox) in BBoxes.withIndex()) {
+                    bbox!!
+                    val cur_left = bbox.left
+                    val cur_top = bbox.top
+
+                    val cur_dist = sqr_distance(cur_left, cur_top,
+                        last_left ?: saved_left,
+                        last_top ?: saved_top)
+
+                    if ((min_dist == -1 || cur_dist < min_dist) && cur_dist <= bboxesSimilarityDist) {
+                        min_dist = cur_dist
+                        new_ind = i_face
+                    }
+                }
+
+                if (new_ind != null) {
+                    // Update the match
+                    BBoxesMatches[key] = BBoxes[new_ind]
+                    Names[new_ind] = NameOfBBox[key] ?: "..."
+                }
+            }
+
+        }
+        else {
+            val New_NameOfBBox = mutableMapOf<Rect, String>()
+
+            // Save bboxes which are in the descriptor right now
+            BBoxesMatches.clear()
+            for (bbox in BBoxes) {
+                BBoxesMatches[bbox!!] = null
+            }
+            // Set names to corresponding bboxes
+            for ((bbox, name) in NameOfBBox) {
+                val named_left = bbox.left
+                val named_top = bbox.top
+
+                var new_ind: Int? = null
+                var min_dist = -1
+                // Find the closest bbox among the currently detected
+                for ((i_face, bbox) in BBoxes.withIndex()) {
+                    bbox!!
+                    val cur_left = bbox.left
+                    val cur_top = bbox.top
+
+                    val cur_dist = sqr_distance(cur_left, cur_top, named_left, named_top)
+
+                    if ((min_dist == -1 || cur_dist < min_dist) && cur_dist <= bboxesSimilarityDist) {
+                        min_dist = cur_dist
+                        new_ind = i_face
+                    }
+                }
+
+                if (new_ind != null) {
+                    // Update
+                    New_NameOfBBox[BBoxes[new_ind]!!] = name
+                    Names[new_ind] = name
+                }
+            }
+
+            // Update the stored names
+            NameOfBBox = New_NameOfBBox
+        }
+
+        Log.d("JOPA", "NameOfBBox:")
+        for ((key, value) in NameOfBBox) {
+            Log.d("JOPA", "  ((${key.left},${key.top},${key.right},${key.bottom}): $value)")
+        }
+        Log.d("JOPA", "BBoxesMatches:")
+        for ((key, value) in BBoxesMatches) {
+            Log.d("JOPA", "  ((${key.left},${key.top},${key.right},${key.bottom}): " +
+                    "(${if (value != null) "${value.left},${value.top},${value.right},${value.bottom}" else "null"}))")
+        }
+
+        updateBBoxes(BBoxes, Names, analyze_width, analyze_height, null)
+    }
+
+    override fun afterDescription(faces: List<FirebaseVisionFace>?,
+                                  analyze_width: Int, analyze_height: Int,
+                                  Descriptors: Array<FloatArray>) {
+        Log.d("JOPA", "afterDescription()")
+        // Clear NameOfBBox
+        NameOfBBox.clear()
+
+        // Get arrays of bboxes and names
+        val BBoxes: Array<Rect?> = Array(faces?.size!!) {null}
+        val Names = Array(faces.size) {"..."}
+
+        (faces zip Descriptors).forEachIndexed { ind, pair ->
+            // Save names and bboxes
+            Names[ind] = recognize(pair.second)
+            BBoxes[ind] = BBoxesMatches[pair.first.boundingBox]
+// BBoxes[ind] = BBoxesMatches[pair.first.boundingBox] ?: pair.first.boundingBox
+            // Add to NameOfBBox
+            if (BBoxes[ind] != null)
+                NameOfBBox[BBoxes[ind]!!] = Names[ind]
+        }
+
+        // Descriptor is free now
+        describe_isBusy.set(false)
+
+        updateBBoxes(BBoxes, Names, analyze_width, analyze_height, Descriptors)
+    }
+
+    fun updateBBoxes(BBoxes: Array<Rect?>, Names: Array<String>,
+                     analyze_width: Int, analyze_height: Int, Descriptors: Array<FloatArray>?) {
         runOnUiThread{
             if (skipNextFrame.get()) {
                 skipNextFrame.set(false)
@@ -456,82 +590,29 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                 val bbox_clr = (255 shl 24) or 255
                 val text_bg_clr = "#8c0000ff"
 
-                // If there are faces, iterate through them and draw bboxes
-                if (faces?.isNotEmpty()!! and Descriptors.isNotEmpty()) {
-                    val face = faces[0]
-                    // Remember the last embedding
-                    lastEmbedding = Descriptors[0]
-
-                    // Get coordinates relative to analyzer frame
-                    var left = if (frontCam.get()) analyze_width - face.boundingBox.right
-                    else face.boundingBox.left
-                    var right = if (frontCam.get()) analyze_width - face.boundingBox.left
-                    else face.boundingBox.right
-                    var bottom = face.boundingBox.bottom
-                    var top = face.boundingBox.top
-
-                    // Cast to coordinates relative to preview frame
-                    left = (left * preview_width) / analyze_width as Int
-                    right = (right * preview_width) / analyze_width as Int
-                    top = (top * preview_height) / analyze_height as Int
-                    bottom = (bottom * preview_height) / analyze_height as Int
-
-                    // Cast to coordinates relative to scaled window
-                    left -= offset_x
-                    right -= offset_x
-                    top -= offset_y
-                    bottom -= offset_y
-
-                    // Draw a bbox around the face
-                    for (x in left..right) {
-                        if (x !in 0 until scaled_win_width) continue
-                        if (top in 0 until scaled_win_height) bm.setPixel(x, top, bbox_clr)
-                        if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bbox_clr)
+                if (BBoxes.isNotEmpty()) {
+                    var bbox: Rect? = null
+                    for (_bbox in BBoxes) {
+                        if (_bbox != null) {
+                            bbox = _bbox
+                            break
+                        }
                     }
-                    for (y in top..bottom) {
-                        if (y !in 0 until scaled_win_height) continue
-                        if (left in 0 until scaled_win_width) bm.setPixel(left, y, bbox_clr)
-                        if (right in 0 until scaled_win_width) bm.setPixel(right, y, bbox_clr)
+                    if (bbox == null) {
+                        // There're no faces on the frame
+                        lastEmbedding = FloatArray(0)
                     }
-
-                    // Cast to coordinates relative to original window
-                    left = left * win_width / scaled_win_width
-                    top = top * win_height / scaled_win_height
-
-                    // Display the name if it's known
-                    if (nameToAdd != "???")
-                        displayText("$nameToAdd?", left, top, text_bg_clr)
-                } else {
-                    // There's no faces on the frame
-                    lastEmbedding = FloatArray(0)
-                }
-            }
-            // Recognition mode
-            else {
-                // Colors for recognized and unrecognized faces
-                val green_u8 = (255 shl 24) or (255 shl 8)
-                val green_hex = "#8c00ff00"
-                val red_u8 = (255 shl 24) or (255 shl 16)
-                val red_hex = "#8cff0000"
-
-                // If there are faces, iterate through them and draw bboxes
-                if (faces?.isNotEmpty()!!) {
-                    for ((face, embedding) in faces zip Descriptors) {
-                        // Recognize the face
-                        val face_name = recognize(embedding)
-                        Log.d("JOPA", "It's $face_name")
-
-                        // Set colors depending on if the face was recognized
-                        val bbox_clr = if (face_name == "???") red_u8 else green_u8
-                        val text_bg_clr = if (face_name == "???") red_hex else green_hex
+                    else {
+                        // Remember the last embedding
+                        if (Descriptors != null) lastEmbedding = Descriptors[0]
 
                         // Get coordinates relative to analyzer frame
-                        var left = if (frontCam.get()) analyze_width - face.boundingBox.right
-                        else face.boundingBox.left
-                        var right = if (frontCam.get()) analyze_width - face.boundingBox.left
-                        else face.boundingBox.right
-                        var bottom = face.boundingBox.bottom
-                        var top = face.boundingBox.top
+                        var left = if (frontCam.get()) analyze_width - bbox.right
+                        else bbox.left
+                        var right = if (frontCam.get()) analyze_width - bbox.left
+                        else bbox.right
+                        var bottom = bbox.bottom
+                        var top = bbox.top
 
                         // Cast to coordinates relative to preview frame
                         left = (left * preview_width) / analyze_width as Int
@@ -549,7 +630,75 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
                         for (x in left..right) {
                             if (x !in 0 until scaled_win_width) continue
                             if (top in 0 until scaled_win_height) bm.setPixel(x, top, bbox_clr)
-                            if (bottom in 0 until scaled_win_height) bm.setPixel(x, bottom, bbox_clr)
+                            if (bottom in 0 until scaled_win_height) bm.setPixel(
+                                x,
+                                bottom,
+                                bbox_clr
+                            )
+                        }
+                        for (y in top..bottom) {
+                            if (y !in 0 until scaled_win_height) continue
+                            if (left in 0 until scaled_win_width) bm.setPixel(left, y, bbox_clr)
+                            if (right in 0 until scaled_win_width) bm.setPixel(right, y, bbox_clr)
+                        }
+
+                        // Cast to coordinates relative to original window
+                        left = left * win_width / scaled_win_width
+                        top = top * win_height / scaled_win_height
+
+                        // Display the name if it's known
+                        if (nameToAdd != "???")
+                            displayText("$nameToAdd?", left, top, text_bg_clr)
+                    }
+                } else {
+                    // There're no faces on the frame
+                    lastEmbedding = FloatArray(0)
+                }
+            }
+            // Recognition mode
+            else {
+                // Colors for recognized and unrecognized faces
+                val green_u8 = (255 shl 24) or (255 shl 8)
+                val green_hex = "#8c00ff00"
+                val red_u8 = (255 shl 24) or (255 shl 16)
+                val red_hex = "#8cff0000"
+
+                // If there are faces, iterate through them and draw bboxes
+                for ((bbox, face_name) in BBoxes zip Names) {
+                    if (bbox != null) {
+                        // Set colors depending on if the face was recognized
+                        val bbox_clr = if (face_name == "???") red_u8 else green_u8
+                        val text_bg_clr = if (face_name == "???") red_hex else green_hex
+
+                        // Get coordinates relative to analyzer frame
+                        var left = if (frontCam.get()) analyze_width - bbox.right
+                        else bbox.left
+                        var right = if (frontCam.get()) analyze_width - bbox.left
+                        else bbox.right
+                        var bottom = bbox.bottom
+                        var top = bbox.top
+
+                        // Cast to coordinates relative to preview frame
+                        left = (left * preview_width) / analyze_width as Int
+                        right = (right * preview_width) / analyze_width as Int
+                        top = (top * preview_height) / analyze_height as Int
+                        bottom = (bottom * preview_height) / analyze_height as Int
+
+                        // Cast to coordinates relative to scaled window
+                        left -= offset_x
+                        right -= offset_x
+                        top -= offset_y
+                        bottom -= offset_y
+
+                        // Draw a bbox around the face
+                        for (x in left..right) {
+                            if (x !in 0 until scaled_win_width) continue
+                            if (top in 0 until scaled_win_height) bm.setPixel(x, top, bbox_clr)
+                            if (bottom in 0 until scaled_win_height) bm.setPixel(
+                                x,
+                                bottom,
+                                bbox_clr
+                            )
                         }
                         for (y in top..bottom) {
                             if (y !in 0 until scaled_win_height) continue
@@ -575,6 +724,8 @@ class MainActivity : AppCompatActivity(), BBoxUpdater {
 }
 
 interface BBoxUpdater {
-    fun updateBBoxes(faces: List<FirebaseVisionFace>?, analyze_width: Int, analyze_height: Int,
-                     Descriptors: Array<FloatArray>)
+    fun afterDetection(faces: List<FirebaseVisionFace>?, analyze_width: Int, analyze_height: Int,
+                       descriptorWasBusy: Boolean)
+    fun afterDescription(faces: List<FirebaseVisionFace>?, analyze_width: Int, analyze_height: Int,
+                         Descriptors: Array<FloatArray>)
 }
