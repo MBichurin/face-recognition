@@ -24,8 +24,7 @@ import java.nio.MappedByteBuffer
 private var Desctiptors = Array(0) { FloatArray(128) }
 
 // To not detect faces on every frame, just one at once
-var detect_isBusy = AtomicBoolean(false)
-var describe_isBusy = AtomicBoolean(false)
+var detect_describe_isBusy = AtomicBoolean(false)
 
 class MyAnalyzer: ImageAnalysis.Analyzer {
     private lateinit var listener: BBoxUpdater
@@ -61,33 +60,20 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         imageProxy.close()
 
         // If detector is busy, skip the frame
-        if (detect_isBusy.get())
+        if (detect_describe_isBusy.get())
             return
-
-        // Detector is busy now
-        detect_isBusy.set(true)
+        // Detector or Descriptor is busy now
+        detect_describe_isBusy.set(true)
 
         // Pass the image to the detector
         detector.detectInImage(image)
             .addOnCompleteListener { faces ->
                 // Pass data to the listener
-                listener.afterDetection(faces.result, image.bitmap.width, image.bitmap.height,
-                    describe_isBusy.get())
-
-                // If descriptor is free
-                if (!describe_isBusy.get()) {
-                    // Descriptor is busy now
-                    describe_isBusy.set(true)
-                    // Start description
-                    startDescription(faces.result, image.bitmap)
-                }
-                else {
-                    detect_isBusy.set(false)
-                }
+                successfulDetection(faces.result, image.bitmap)
             }
             .addOnFailureListener { e ->
                 // Detector is free now
-                detect_isBusy.set(false)
+                detect_describe_isBusy.set(false)
                 Log.e("FaceDetector", e.message!!)
             }
     }
@@ -96,22 +82,17 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         listener = _listener
     }
 
-    private fun startDescription(faces: List<FirebaseVisionFace>?, bitmap: Bitmap) {
+    private fun successfulDetection(faces: List<FirebaseVisionFace>?, bitmap: Bitmap) {
         if (faces?.isNotEmpty()!!) {
-            // Detector is free now
-            detect_isBusy.set(false)
-
             val recognition = Recognition(faces, bitmap, modelFile, listener)
             Thread(recognition).start()
         }
         else {
             Desctiptors = Array(0) { FloatArray(128) }
-
-            // Detector is free now
-            detect_isBusy.set(false)
-
-            // Pass data to the listener
-            listener.afterDescription(faces, bitmap.width, bitmap.height, Desctiptors)
+            // Descriptor is free now
+            detect_describe_isBusy.set(false)
+            // Update bboxes
+            listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
         }
     }
 
@@ -133,7 +114,6 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
         private val img_size = 160
 
         override fun run() {
-            Log.d("JOPA", "Description's started")
             // Interpreter of facenet model
             val facenet = Interpreter(modelFile)
 
@@ -163,9 +143,11 @@ class MyAnalyzer: ImageAnalysis.Analyzer {
                 }
             }
 
-            // Pass data to the listener
-            listener.afterDescription(faces, bitmap.width, bitmap.height, Desctiptors)
-            Log.d("JOPA", "Description's finished")
+            // Update bboxes
+            listener.updateBBoxes(faces, bitmap.width, bitmap.height, Desctiptors)
+
+            // Descriptor is free now
+            detect_describe_isBusy.set(false)
         }
 
         private fun getFaceBuffer(face: FirebaseVisionFace): ByteBuffer {
