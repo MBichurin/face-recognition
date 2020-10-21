@@ -112,7 +112,7 @@ The analyze() function detects and describes faces as described above. After the
 
 The problem is the coordinates of the bounding boxes around faces are respective to the size of a frame in the image analysis. And the bounding boxes are drawn above the preview frame. However the sizes of frames in preview and analysis could differ.
 
-![Fig. 4. Bounding boxes coordinates conversion. 1st column - the visible window, 2nd - a preview, 3rd - a frame in image analysis](https://drive.google.com/file/d/16AtnOrPCDuGRsWYCCT8ZdrJTjdfeYjPo/view?usp=sharing "Fig. 4. Bounding boxes coordinates conversion. 1st column - the visible window, 2nd - a preview, 3rd - a frame in image analysis")
+![Fig. 4. Bounding boxes coordinates conversion. 1st column - the visible window, 2nd - a preview, 3rd - a frame in image analysis](https://github.com/MBichurin/face-recognition/raw/master/bboxes_coords_conversion.png?raw=true "Fig. 4. Bounding boxes coordinates conversion. 1st column - the visible window, 2nd - a preview, 3rd - a frame in image analysis")
 
 *Fig. 4. Bounding boxes coordinates conversion. 1st column - the visible window, 2nd - a preview, 3rd - a frame in image analysis*
 
