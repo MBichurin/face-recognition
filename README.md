@@ -64,7 +64,7 @@ For face description we used 2 versions of pretrained FaceNet model: [an impleme
 The input for both versions is expected to be an image containing face (cropped using a relevant bounding box without extra alignments), resized to 160*160 and normalized to values in [-1;1].
 The first version returns a 512-dimensional embedding. The output of the second one is 128-dimensional.
 
-![Fig. 3. FaceNet structure: a batch input layer and a deep CNN followed by L2 normalization, which results in the face embedding. This is followed by the triplet loss during training](https://miro.medium.com/max/1936/1*ZD-mw2aUQfFwCLS3cV2rGA.png)
+![Fig. 3. FaceNet structure: a batch input layer and a deep CNN followed by L2 normalization, which results in the face embedding. This is followed by the triplet loss during training](https://miro.medium.com/max/1936/1*ZD-mw2aUQfFwCLS3cV2rGA.png "Fig. 3. FaceNet structure: a batch input layer and a deep CNN followed by L2 normalization, which results in the face embedding. This is followed by the triplet loss during training")
 
 *Fig. 3. FaceNet structure: a batch input layer and a deep CNN followed by L2 normalization, which results in the face embedding. This is followed by the triplet loss during training*
 
